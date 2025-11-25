@@ -14,7 +14,6 @@ import HeaderView from '@/components/layouts/HeaderView.vue'
 import EditFileModal from '@/components/common/modals/EditFileModal.vue'
 import FileViewerModal from '@/components/modal/FileViewerModal.vue'
 import { useCourseStore } from '@/stores/courseStore'
-import { useUploadFilesStore } from '@/stores/uploadFiles'
 import { tabs } from '@/mock/coursesData'
 import { t } from '@/utils/i18n'
 import {
@@ -24,12 +23,13 @@ import {
   VisibilityStatus,
   CourseExecutionType,
 } from '@/types/Course'
-import type { CourseAssignations, CourseDetails } from '@/types/Course'
+import type { CourseDetails } from '@/types/Course'
 import type { Assignation } from '@/types/Lessons'
 import { getContentTypeFromFile } from '@/utils/utils'
 import type { Media } from '@/types/Media'
-import type { UpdateFileParams } from '@/types/uploadFiles'
 import type { ActionButtonConfig } from '@/types/GlobalTypes'
+import { useItemActions } from '@/composables/useItemActions'
+import type { CategoryItem } from '@/types/Category'
 
 interface Props {
   isAdmin?: boolean
@@ -42,23 +42,21 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
-const uploadFilesStore = useUploadFilesStore()
-const isFileViewerOpen = ref(false)
-const currentFile = ref<Media | null>(null)
+
+// Use item actions composable
+const itemActions = useItemActions({
+  isAdmin: props.isAdmin,
+  onRefresh: async () => {
+    await courseStore.fetchCourseById(Number(route.params.id), true)
+  },
+  getAssignations: () => courseStore.courseDetails?.assignations,
+})
+
 // State
 const activeTab = ref('course')
-const isShowCourseCreationModal = ref(false)
-const showDeleteCourseModal = ref(false)
-const showEditModal = ref(false)
 const selectedCourseId = ref<number | null>(null)
-const file = ref<Media | null>(null)
-const showDeleteFileModal = ref(false)
-const showProgressTable = ref(false)
 const selectedCourseVisibility = ref<VisibilityStatus | null>(null)
-const showVisibilityChangeModal = ref(false)
-const selectedAssignations = ref<Assignation | null>(null)
 const selectedAssignationsType = ref<VisibilityType | null>(null)
-const selectedContentType = ref<CourseExecutionType | null>(null)
 // Computed property for initial tab
 const currentTab = computed(() => {
   return activeTab.value === 'participants' || activeTab.value === 'progress'
@@ -112,7 +110,7 @@ const actionButtons = computed<ActionButtonConfig[]>(() => [
     onClick: handleEditCourse,
   },
 ])
-const courseItems = computed(() => {
+const courseItems = computed((): (CategoryItem & { assignation: Assignation })[] => {
   if (!courseStore.courseDetails?.assignations) {
     return []
   }
@@ -138,7 +136,9 @@ const courseItems = computed(() => {
       actionType: assignation.relatedType as CourseActionType | undefined,
       percentage: assignation.execution?.percentage || 0,
       assignation: assignation, // Keep reference to original assignation
-      visible: assignation.model.visible || VisibilityStatus.SHOW,
+      visibility: (assignation.model.visibility || VisibilityStatus.SHOW) as VisibilityStatus,
+      relatedId: assignation.relatedId,
+      isExpired: false, // Course items don't have expiration
     }
   })
 })
@@ -168,147 +168,62 @@ const handleEditCourse = async () => {
   if (visibility === VisibilityStatus.MAINTENANCE || visibility === VisibilityStatus.HIDE) {
     selectedCourseId.value = Number(courseId)
     await courseStore.fetchCourseById(selectedCourseId.value as number, true)
-    isShowCourseCreationModal.value = true
+    itemActions.isShowCourseCreationModal.value = true
     return
   }
   selectedCourseVisibility.value = visibility as VisibilityStatus
   selectedCourseId.value = Number(courseId)
   selectedAssignationsType.value = VisibilityType.COURSE
-  showVisibilityChangeModal.value = true
+  itemActions.selectedItemId.value = Number(courseId)
+  itemActions.selectedCategoryVisibility.value = visibility as VisibilityStatus
+  itemActions.selectedItemType.value = CourseActionType.COURSE
+  itemActions.showVisibilityChangeModal.value = true
 }
 
+// Handle course-level visibility change (for the course itself, not items)
 const handleVisibilityChangeSave = async () => {
-  showVisibilityChangeModal.value = false
+  itemActions.handleVisibilityChangeSave()
   selectedCourseId.value = null
   selectedCourseVisibility.value = null
-  selectedAssignations.value = null
   selectedAssignationsType.value = null
-  await courseStore.fetchCourseById(Number(route.params.id), true)
 }
+
 const handleVisibilityChangeEdit = async () => {
-  await courseStore.fetchCourseById(selectedCourseId.value as number, true)
-  isShowCourseCreationModal.value = true
-  showVisibilityChangeModal.value = false
+  await itemActions.handleVisibilityChangeEdit()
   selectedCourseVisibility.value = null
 }
 
-const handleEdit = async (item: Assignation) => {
-  if (props.isAdmin && item.relatedType === CourseActionType.FILE_ASSET) {
-    showEditModal.value = true
-    file.value = item.model
-  } else if (props.isAdmin && item.relatedType === CourseActionType.COURSE) {
-    await courseStore.fetchCourseById(item.model.id)
-    isShowCourseCreationModal.value = true
-  }
+// Item handlers now use composable - keeping for backward compatibility if needed
+const handleEdit = async (item: CategoryItem & { assignation: Assignation }) => {
+  await itemActions.handleEdit(item)
 }
 
-const handleDelete = (item: Assignation) => {
-  if (props.isAdmin && item.relatedType === CourseActionType.FILE_ASSET) {
-    file.value = item.model
-    showDeleteFileModal.value = true
-  } else if (props.isAdmin && item.relatedType === CourseActionType.COURSE) {
-    selectedCourseId.value = item.model.id
-    showDeleteCourseModal.value = true
-  }
+const handleDelete = (item: CategoryItem & { assignation: Assignation }) => {
+  itemActions.handleDelete(item)
 }
 const handleDeleteCourse = () => {
-  showDeleteCourseModal.value = true
-}
-const handleCancelFileModal = () => {
-  showDeleteFileModal.value = false
-  selectedCourseId.value = null
-}
-const handleDeleteConfirmFileModal = async () => {
-  if (file.value) {
-    await uploadFilesStore.deleteFile([file.value.id.toString()], 'soft')
-  }
-  showDeleteFileModal.value = false
-  await courseStore.fetchCourseById(Number(route.params.id), true)
-}
-const handleEditSuccess = async (data: UpdateFileParams) => {
-  await uploadFilesStore.updateFileDetails(data)
-  showEditModal.value = false
-  file.value = null
-  await courseStore.fetchCourseById(Number(route.params.id), true)
+  selectedCourseId.value = Number(route.params.id)
+  itemActions.selectedItemId.value = Number(route.params.id)
+  itemActions.selectedItemType.value = CourseActionType.COURSE
+  itemActions.showDeleteModal.value = true
 }
 
-const handleCloseCourseCreationModal = async () => {
-  isShowCourseCreationModal.value = false
-  await courseStore.fetchCourseById(Number(route.params.id), true)
-}
-const handleCancelCourseModal = () => {
-  showDeleteCourseModal.value = false
-}
-const handleDeleteConfirmCourseModal = async () => {
-  if (selectedCourseId.value) {
-    const courseId = selectedCourseId.value
-    await courseStore.deleteCourse([courseId], 'soft')
-    await courseStore.fetchCourseById(Number(route.params.id), true)
-    showDeleteCourseModal.value = false
-    selectedCourseId.value = null
-  } else {
-    await courseStore.deleteCourse([Number(route.params.id)], 'soft')
-    showDeleteCourseModal.value = false
-    selectedCourseId.value = null
+// Override handleConfirmDelete to handle course deletion with navigation
+const handleConfirmDelete = async () => {
+  const isDeletingCurrentCourse =
+    itemActions.selectedItemId.value === Number(route.params.id) &&
+    itemActions.selectedItemType.value === CourseActionType.COURSE
+
+  await itemActions.handleConfirmDelete()
+
+  // If deleting the current course, navigate back
+  if (isDeletingCurrentCourse) {
     router.back()
   }
 }
-const handleProgressCourse = (item: CourseAssignations) => {
-  if (item.actionType === CourseActionType.COURSE || item.actionType === CourseActionType.LESSONS) {
-    selectedContentType.value = item.actionType as unknown as CourseExecutionType
-    selectedCourseId.value = item.id
-    showProgressTable.value = true
-  }
-}
-const handleCloseProgressTable = () => {
-  showProgressTable.value = false
-  selectedCourseId.value = null
-  selectedContentType.value = null
-}
-const handleItemClick = (item: CourseAssignations) => {
-  const existingAssignation = courseStore.courseDetails?.assignations.find((a) => a.id === item.id)
-  if (!existingAssignation) {
-    return
-  }
 
-  if (item.actionType === CourseActionType.FILE_ASSET) {
-    const file = existingAssignation.model as Media
-    if (file) {
-      isFileViewerOpen.value = true
-      currentFile.value = file
-    }
-  } else if (item.actionType === CourseActionType.COURSE) {
-    // Navigate to course admin detail page
-    const courseId = (existingAssignation.model as { id: number }).id
-    if (courseId) {
-      router.push({
-        name: 'course-admin-details',
-        params: { id: courseId.toString() },
-      })
-    }
-  } else if (item.actionType === CourseActionType.LESSONS) {
-    // Navigate to lesson admin detail page
-    const lessonId = (existingAssignation.model as { id: number }).id
-    if (lessonId) {
-      router.push({
-        name: 'lesson-admin-details',
-        params: { id: lessonId.toString() },
-      })
-    }
-  } else if (item.actionType === CourseActionType.QUIZ) {
-    // Navigate to quiz admin detail page
-    const quizId = (existingAssignation.model as { id: number }).id
-    if (quizId) {
-      router.push({
-        name: 'admin-quiz-detail',
-        params: { id: quizId.toString() },
-      })
-    }
-  }
-}
-const handleCloseFileViewer = () => {
-  isFileViewerOpen.value = false
-  currentFile.value = null
+const handleProgressCourse = (item: CategoryItem & { assignation: Assignation }) => {
+  itemActions.handleProgress(item)
 }
 </script>
 <template>
@@ -411,15 +326,15 @@ const handleCloseFileViewer = () => {
             v-for="item in courseItems"
             :key="item.id"
             :title="item.title"
-            :visibility="item.visible"
+            :visibility="item.visibility"
             :content-type="item.contentType as CourseContentType"
             :status="item.status"
             :action-type="item.actionType as CourseActionType"
             :percentage="item.percentage"
-            @edit="handleEdit(item.assignation)"
+            @edit="handleEdit(item)"
             @progress="handleProgressCourse(item)"
-            @delete="handleDelete(item.assignation)"
-            @click="handleItemClick(item as CourseAssignations)"
+            @delete="handleDelete(item)"
+            @click="itemActions.handleItemClick(item)"
             :isAdmin="true"
           />
         </div>
@@ -439,53 +354,50 @@ const handleCloseFileViewer = () => {
       </div>
     </div>
     <EditFileModal
-      v-if="showEditModal && file"
-      :file="file"
-      :isOpen="showEditModal"
-      @onClose="showEditModal = false"
-      @onSuccess="handleEditSuccess"
+      v-if="itemActions.showEditModal.value && itemActions.currentFile.value"
+      :file="itemActions.currentFile.value"
+      :isOpen="itemActions.showEditModal.value"
+      @onClose="itemActions.showEditModal.value = false"
+      @onSuccess="itemActions.handleEditSuccess"
     />
     <CourseCreationModal
       :title="t('pages.courses.createCourse')"
-      v-if="isShowCourseCreationModal && isAdmin"
-      :editCourse="courseStore.courseDetails as CourseDetails"
-      @close="handleCloseCourseCreationModal"
+      v-if="itemActions.isShowCourseCreationModal.value && isAdmin"
+      :editCourse="itemActions.courseStore.courseDetails as CourseDetails"
+      @close="itemActions.handleCloseCourseCreationModal"
     />
     <BaseDeleteModal
-      v-if="showDeleteCourseModal && isAdmin"
-      :text="t('pages.baseDeleteModal.deleteCourse')"
-      :description="t('pages.baseDeleteModal.deleteCourseDescription')"
-      @onCancel="handleCancelCourseModal"
-      @onDelete="handleDeleteConfirmCourseModal"
-    />
-    <BaseDeleteModal
-      v-if="showDeleteFileModal && isAdmin"
-      :text="t('pages.baseDeleteModal.deleteFile')"
-      :description="t('pages.baseDeleteModal.deleteFileDescription')"
-      @onCancel="handleCancelFileModal"
-      @onDelete="handleDeleteConfirmFileModal"
+      v-if="itemActions.showDeleteModal.value && isAdmin"
+      :text="t(itemActions.deleteModalText.value)"
+      :description="t(itemActions.deleteModalDescription.value)"
+      @onCancel="itemActions.handleCancelDelete"
+      @onDelete="handleConfirmDelete"
     />
     <FileViewerModal
-      v-if="isFileViewerOpen"
-      :isOpen="isFileViewerOpen"
-      :file="currentFile"
-      @close="handleCloseFileViewer"
+      v-if="itemActions.isFileViewerOpen.value"
+      :isOpen="itemActions.isFileViewerOpen.value"
+      :file="itemActions.currentFile.value"
+      @close="itemActions.handleCloseFileViewer"
     />
     <ProgressTable
-      v-if="showProgressTable"
-      :isOpen="showProgressTable"
-      @onClose="handleCloseProgressTable"
-      :id="selectedCourseId as number"
-      :type="selectedContentType as CourseExecutionType"
+      v-if="itemActions.showProgressTable.value"
+      :isOpen="itemActions.showProgressTable.value"
+      @onClose="itemActions.handleCloseProgressTable"
+      :id="(itemActions.selectedItemId.value as number) || 0"
+      :type="
+        (itemActions.selectedItemType.value as CourseExecutionType) || CourseExecutionType.COURSE
+      "
     />
     <CourseVisibilityChangeModal
-      v-if="showVisibilityChangeModal && isAdmin"
-      :isOpen="showVisibilityChangeModal"
-      :itemId="selectedCourseId as number"
-      :currentVisibility="selectedCourseVisibility as VisibilityStatus"
-      @onClose="showVisibilityChangeModal = false"
+      v-if="itemActions.showVisibilityChangeModal.value && isAdmin"
+      :isOpen="itemActions.showVisibilityChangeModal.value"
+      :itemId="(itemActions.selectedItemId.value as number) || 0"
+      :currentVisibility="
+        (itemActions.selectedCategoryVisibility.value as VisibilityStatus) || VisibilityStatus.SHOW
+      "
+      @onClose="itemActions.handleCloseVisibilityChangeModal"
       @onSave="handleVisibilityChangeSave"
-      :type="selectedAssignationsType as VisibilityType"
+      :type="itemActions.renderVisibilityType()"
       @onEdit="handleVisibilityChangeEdit"
     />
   </div>

@@ -13,6 +13,7 @@ import CreateLessonModal from '@/components/lessonCreation/CreateLessonModal.vue
 import EditFileModal from '@/components/common/modals/EditFileModal.vue'
 import HeaderView from '@/components/layouts/HeaderView.vue'
 import { useCategoryStore } from '@/stores/categoryStore'
+import { useItemActions } from '@/composables/useItemActions'
 import { t } from '@/utils/i18n'
 import type { Assignation } from '@/types/Lessons'
 import type { CategoryItem } from '@/types/Category'
@@ -24,7 +25,6 @@ import {
 } from '@/types/Course'
 import { getContentTypeFromFile } from '@/utils/utils'
 import type { Media } from '@/types/Media'
-import { useItemActions } from '@/composables/useItemActions'
 
 interface Props {
   isAdmin?: boolean

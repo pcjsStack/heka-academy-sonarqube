@@ -251,8 +251,8 @@ const handleLessonsScrollBottom = async () => {
     const response = await lessonsService.getLessons({
       page: lessonsStore.page + 1,
       perPage: 8,
-      order: 'desc',
-      orderColumn: 'id',
+      order: 'asc',
+      orderColumn: 'name',
       isAdmin: true,
     })
     const existingIds = new Set(lessonsStore.lessons.map((l) => l.id))
@@ -277,8 +277,8 @@ const handleQuizScrollBottom = async () => {
     const response = await quizService.getQuizzes({
       page: quizStore.page + 1,
       perPage: 8,
-      order: 'desc',
-      orderColumn: 'id',
+      order: 'asc',
+      orderColumn: 'title',
       isAdmin: true,
     })
     const existingIds = new Set(quizStore.quizzes.map((q) => q.id))

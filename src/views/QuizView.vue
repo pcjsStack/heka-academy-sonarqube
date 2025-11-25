@@ -93,8 +93,8 @@ const handleClearFilters = () => {
     search: filters.value.search,
     page: 0,
     perPage: 12,
-    order: 'desc',
-    orderColumn: 'id',
+    order: 'asc',
+    orderColumn: 'title',
     status: null,
     executionStatus: null,
   }

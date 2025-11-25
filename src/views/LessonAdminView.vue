@@ -13,7 +13,7 @@ import EditFileModal from '@/components/common/modals/EditFileModal.vue'
 import FileViewerModal from '@/components/modal/FileViewerModal.vue'
 import CourseParticipantsProgress from '@/components/courseDetails/CourseParticipantsProgress.vue'
 import { useLessonsStore } from '@/stores/lessonsStore'
-import { useUploadFilesStore } from '@/stores/uploadFiles'
+import { useItemActions } from '@/composables/useItemActions'
 import { lessonTabs as tabs } from '@/mock/lessonsData'
 import { t } from '@/utils/i18n'
 import {
@@ -25,9 +25,8 @@ import {
 } from '@/types/Course'
 import type { Assignation } from '@/types/Lessons'
 import { getContentTypeFromFile } from '@/utils/utils'
-import type { Media } from '@/types/Media'
-import type { UpdateFileParams } from '@/types/uploadFiles'
 import type { ActionButtonConfig } from '@/types/GlobalTypes'
+import type { CategoryItem } from '@/types/Category'
 
 interface Props {
   isAdmin?: boolean
@@ -40,23 +39,20 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter()
 const route = useRoute()
 const lessonsStore = useLessonsStore()
-const uploadFilesStore = useUploadFilesStore()
-const isFileViewerOpen = ref(false)
-const currentFile = ref<Media | null>(null)
+
+// Use item actions composable
+const itemActions = useItemActions({
+  isAdmin: props.isAdmin,
+  onRefresh: async () => {
+    await lessonsStore.fetchLessonById(Number(route.params.id), true)
+  },
+  getAssignations: () => lessonsStore.getLessonDetails?.assignations,
+})
+
 // State
 const activeTab = ref('content')
-const isShowLessonCreationModal = ref(false)
-const showDeleteLessonModal = ref(false)
-const showEditModal = ref(false)
 const selectedLessonId = ref<number | null>(null)
-const file = ref<Media | null>(null)
-const showDeleteFileModal = ref(false)
-const showProgressTable = ref(false)
-const selectedContentType = ref<CourseExecutionType | null>(null)
-const selectedProgressId = ref<number | null>(null)
 const selectedLessonVisibility = ref<VisibilityStatus | null>(null)
-const showVisibilityChangeModal = ref(false)
-const selectedAssignations = ref<Assignation | null>(null)
 const selectedAssignationsType = ref<VisibilityType | null>(null)
 
 // Computed property for initial tab
@@ -113,7 +109,7 @@ const actionButtons = computed<ActionButtonConfig[]>(() => [
   },
 ])
 
-const lessonItems = computed(() => {
+const lessonItems = computed((): (CategoryItem & { assignation: Assignation })[] => {
   if (!lessonsStore.getLessonDetails?.assignations) {
     return []
   }
@@ -124,8 +120,9 @@ const lessonItems = computed(() => {
         let title = ''
         if (assignation.relatedType === CourseActionType.FILE_ASSET) {
           title =
-            (assignation.model as Media).customFileName ||
-            (assignation.model as Media).fileName ||
+            (assignation.model as { customFileName?: string; fileName?: string })
+              .customFileName ||
+            (assignation.model as { customFileName?: string; fileName?: string }).fileName ||
             'Untitled File'
         } else if (assignation.relatedType === CourseActionType.QUIZ) {
           // Quiz uses 'title' field instead of 'name'
@@ -142,7 +139,9 @@ const lessonItems = computed(() => {
           actionType: assignation.relatedType as CourseActionType | undefined,
           percentage: assignation.execution?.percentage || 0,
           assignation: assignation, // Keep reference to original assignation
-          visible: assignation.model.visible || VisibilityStatus.SHOW,
+          visibility: (assignation.model.visibility || VisibilityStatus.SHOW) as VisibilityStatus,
+          relatedId: assignation.relatedId,
+          isExpired: false, // Lesson items don't have expiration
         }
       })
       .filter((item) => item.title) || []
@@ -169,158 +168,64 @@ const handleEditLesson = async () => {
   }
   const visibility = lessonsStore.getLessonDetails?.visibility
   if (visibility === VisibilityStatus.MAINTENANCE || visibility === VisibilityStatus.HIDE) {
-    isShowLessonCreationModal.value = true
+    itemActions.isShowLessonCreationModal.value = true
     await lessonsStore.fetchLessonById(Number(route.params.id), true)
     return
   }
   selectedLessonVisibility.value = visibility as VisibilityStatus
   selectedLessonId.value = Number(route.params.id)
   selectedAssignationsType.value = VisibilityType.LESSONS
-  showVisibilityChangeModal.value = true
+  itemActions.selectedItemId.value = Number(route.params.id)
+  itemActions.selectedCategoryVisibility.value = visibility as VisibilityStatus
+  itemActions.selectedItemType.value = CourseActionType.LESSONS
+  itemActions.showVisibilityChangeModal.value = true
 }
+
+// Handle lesson-level visibility change (for the lesson itself, not items)
 const handleVisibilityChangeSaveLesson = async () => {
-  showVisibilityChangeModal.value = false
+  await itemActions.handleVisibilityChangeSave()
   selectedLessonId.value = null
   selectedLessonVisibility.value = null
-  selectedAssignations.value = null
   selectedAssignationsType.value = null
-  await lessonsStore.fetchLessonById(Number(route.params.id), true)
 }
+
 const handleVisibilityChangeEditLesson = async () => {
-  await lessonsStore.fetchLessonById(selectedLessonId.value as number, true)
-  isShowLessonCreationModal.value = true
-  showVisibilityChangeModal.value = false
+  await itemActions.handleVisibilityChangeEdit()
   selectedLessonVisibility.value = null
 }
 
-const handleEdit = async (item: Assignation) => {
-  if (props.isAdmin && item.relatedType === CourseActionType.FILE_ASSET) {
-    showEditModal.value = true
-    file.value = item.model
-  } else if (props.isAdmin && item.relatedType === CourseActionType.LESSONS) {
-    await lessonsStore.fetchLessonById(item.model.id, true)
-    isShowLessonCreationModal.value = true
-  }
+// Item handlers now use composable
+const handleEdit = async (item: CategoryItem & { assignation: Assignation }) => {
+  await itemActions.handleEdit(item)
 }
 
-const handleDelete = (item: Assignation) => {
-  if (props.isAdmin && item.relatedType === CourseActionType.FILE_ASSET) {
-    file.value = item.model
-    showDeleteFileModal.value = true
-  } else if (props.isAdmin && item.relatedType === CourseActionType.LESSONS) {
-    selectedLessonId.value = item.model.id
-    showDeleteLessonModal.value = true
-  }
+const handleDelete = (item: CategoryItem & { assignation: Assignation }) => {
+  itemActions.handleDelete(item)
 }
 
 const handleDeleteLesson = () => {
-  showDeleteLessonModal.value = true
+  selectedLessonId.value = Number(route.params.id)
+  itemActions.selectedItemId.value = Number(route.params.id)
+  itemActions.selectedItemType.value = CourseActionType.LESSONS
+  itemActions.showDeleteModal.value = true
 }
 
-const handleCancelFileModal = () => {
-  showDeleteFileModal.value = false
-  selectedLessonId.value = null
-}
+// Override handleConfirmDelete to handle lesson deletion with navigation
+const handleConfirmDelete = async () => {
+  const isDeletingCurrentLesson =
+    itemActions.selectedItemId.value === Number(route.params.id) &&
+    itemActions.selectedItemType.value === CourseActionType.LESSONS
 
-const handleDeleteConfirmFileModal = async () => {
-  if (file.value) {
-    await uploadFilesStore.deleteFile([file.value.id.toString()], 'soft')
-  }
-  showDeleteFileModal.value = false
-  await lessonsStore.fetchLessonById(Number(route.params.id), true)
-}
+  await itemActions.handleConfirmDelete()
 
-const handleEditSuccess = async (data: UpdateFileParams) => {
-  await uploadFilesStore.updateFileDetails(data)
-  showEditModal.value = false
-  file.value = null
-  await lessonsStore.fetchLessonById(Number(route.params.id), true)
-}
-
-const handleCloseLessonCreationModal = async () => {
-  isShowLessonCreationModal.value = false
-  await lessonsStore.fetchLessonById(Number(route.params.id), true)
-}
-
-const handleCancelLessonModal = () => {
-  showDeleteLessonModal.value = false
-}
-
-const handleDeleteConfirmLessonModal = async () => {
-  if (selectedLessonId.value) {
-    const lessonId = selectedLessonId.value
-    await lessonsStore.deleteLesson([lessonId])
-    await lessonsStore.fetchLessonById(Number(route.params.id), true)
-    showDeleteLessonModal.value = false
-    selectedLessonId.value = null
-  } else {
-    await lessonsStore.deleteLesson([Number(route.params.id)])
-    showDeleteLessonModal.value = false
-    selectedLessonId.value = null
+  // If deleting the current lesson, navigate back
+  if (isDeletingCurrentLesson) {
     router.back()
   }
 }
 
-const handleProgressLesson = (item: { id: number; actionType?: CourseActionType }) => {
-  if (item.actionType === CourseActionType.COURSE || item.actionType === CourseActionType.LESSONS) {
-    selectedContentType.value = item.actionType as unknown as CourseExecutionType
-    selectedProgressId.value = item.id
-    showProgressTable.value = true
-  }
-}
-
-const handleCloseProgressTable = () => {
-  showProgressTable.value = false
-  selectedProgressId.value = null
-  selectedContentType.value = null
-}
-
-const handleItemClick = (item: { id: number; actionType?: CourseActionType }) => {
-  const existingAssignation = lessonsStore.getLessonDetails?.assignations.find(
-    (a) => a.id === item.id,
-  )
-  if (!existingAssignation) {
-    return
-  }
-
-  if (item.actionType === CourseActionType.FILE_ASSET) {
-    const file = existingAssignation.model as Media
-    if (file) {
-      isFileViewerOpen.value = true
-      currentFile.value = file
-    }
-  } else if (item.actionType === CourseActionType.COURSE) {
-    // Navigate to course admin detail page
-    const courseId = (existingAssignation.model as { id: number }).id
-    if (courseId) {
-      router.push({
-        name: 'course-admin-details',
-        params: { id: courseId.toString() },
-      })
-    }
-  } else if (item.actionType === CourseActionType.LESSONS) {
-    // Navigate to lesson admin detail page
-    const lessonId = (existingAssignation.model as { id: number }).id
-    if (lessonId) {
-      router.push({
-        name: 'lesson-admin-details',
-        params: { id: lessonId.toString() },
-      })
-    }
-  } else if (item.actionType === CourseActionType.QUIZ) {
-    // Navigate to quiz admin detail page
-    const quizId = (existingAssignation.model as { id: number }).id
-    if (quizId) {
-      router.push({
-        name: 'admin-quiz-detail',
-        params: { id: quizId.toString() },
-      })
-    }
-  }
-}
-const handleCloseFileViewer = () => {
-  isFileViewerOpen.value = false
-  currentFile.value = null
+const handleProgressLesson = (item: CategoryItem & { assignation: Assignation }) => {
+  itemActions.handleProgress(item)
 }
 </script>
 <template>
@@ -366,7 +271,6 @@ const handleCloseFileViewer = () => {
                   class="w-full h-full object-cover"
                 />
               </div>
-
               <!-- Lesson Info -->
               <div class="flex flex-col gap-1.5 md:gap-1 lg:gap-1.5 flex-1 min-w-0">
                 <!-- Title -->
@@ -374,7 +278,6 @@ const handleCloseFileViewer = () => {
                   :text="lessonsStore.getLessonDetails?.name || ''"
                   class="!text-[20px] md:!text-[18px] lg:!text-[20px] !leading-[24px] !text-black/85 !font-semibold"
                 />
-
                 <!-- Category -->
                 <BaseText
                   text="Lesson"
@@ -383,7 +286,6 @@ const handleCloseFileViewer = () => {
                   :tone="600"
                   class="!text-primary-600"
                 />
-
                 <!-- Description with Tooltip -->
                 <div
                   v-if="lessonsStore.getLessonDetails?.description"
@@ -415,26 +317,22 @@ const handleCloseFileViewer = () => {
         </div>
       </div>
     </div>
-
-    <!-- Main Content -->
     <div class="px-4 sm:px-6 md:px-4 lg:px-8 py-6 sm:py-6 md:py-5 lg:py-6">
-      <!-- Tab Content -->
       <div class="">
-        <!-- Content Tab -->
         <div v-if="activeTab === 'content'" class="space-y-2">
           <BaseCourseItemCard
             v-for="item in lessonItems"
             :key="item.id"
             :title="item.title"
-            :visibility="item.visible"
+            :visibility="item.visibility"
             :content-type="item.contentType as CourseContentType"
             :status="item.status"
             :action-type="item.actionType as CourseActionType"
             :percentage="item.percentage"
-            @edit="handleEdit(item.assignation)"
+            @edit="handleEdit(item)"
             @progress="handleProgressLesson(item)"
-            @delete="handleDelete(item.assignation)"
-            @click="handleItemClick(item)"
+            @delete="handleDelete(item)"
+            @click="itemActions.handleItemClick(item)"
             :isAdmin="true"
           />
         </div>
@@ -449,53 +347,50 @@ const handleCloseFileViewer = () => {
       </div>
     </div>
     <EditFileModal
-      v-if="showEditModal && file"
-      :file="file"
-      :isOpen="showEditModal"
-      @onClose="showEditModal = false"
-      @onSuccess="handleEditSuccess"
+      v-if="itemActions.showEditModal.value && itemActions.currentFile.value"
+      :file="itemActions.currentFile.value"
+      :isOpen="itemActions.showEditModal.value"
+      @onClose="itemActions.showEditModal.value = false"
+      @onSuccess="itemActions.handleEditSuccess"
     />
     <CreateLessonModal
-      v-if="isShowLessonCreationModal && isAdmin"
-      :show="isShowLessonCreationModal"
-      :edit-lesson="lessonsStore.getLessonDetails"
-      @close="handleCloseLessonCreationModal"
+      v-if="itemActions.isShowLessonCreationModal.value && isAdmin"
+      :show="itemActions.isShowLessonCreationModal.value"
+      :edit-lesson="itemActions.lessonsStore.getLessonDetails"
+      @close="itemActions.handleCloseLessonCreationModal"
     />
     <BaseDeleteModal
-      v-if="showDeleteLessonModal && isAdmin"
-      :text="t('pages.baseDeleteModal.deleteLesson')"
-      :description="t('pages.baseDeleteModal.deleteLessonDescription')"
-      @onCancel="handleCancelLessonModal"
-      @onDelete="handleDeleteConfirmLessonModal"
-    />
-    <BaseDeleteModal
-      v-if="showDeleteFileModal && isAdmin"
-      :text="t('pages.baseDeleteModal.deleteFile')"
-      :description="t('pages.baseDeleteModal.deleteFileDescription')"
-      @onCancel="handleCancelFileModal"
-      @onDelete="handleDeleteConfirmFileModal"
+      v-if="itemActions.showDeleteModal.value && isAdmin"
+      :text="t(itemActions.deleteModalText.value)"
+      :description="t(itemActions.deleteModalDescription.value)"
+      @onCancel="itemActions.handleCancelDelete"
+      @onDelete="handleConfirmDelete"
     />
     <FileViewerModal
-      v-if="isFileViewerOpen"
-      :isOpen="isFileViewerOpen"
-      :file="currentFile"
-      @close="handleCloseFileViewer"
+      v-if="itemActions.isFileViewerOpen.value"
+      :isOpen="itemActions.isFileViewerOpen.value"
+      :file="itemActions.currentFile.value"
+      @close="itemActions.handleCloseFileViewer"
     />
     <ProgressTable
-      v-if="showProgressTable"
-      :isOpen="showProgressTable"
-      @onClose="handleCloseProgressTable"
-      :id="selectedProgressId as number"
-      :type="selectedContentType as CourseExecutionType"
+      v-if="itemActions.showProgressTable.value"
+      :isOpen="itemActions.showProgressTable.value"
+      @onClose="itemActions.handleCloseProgressTable"
+      :id="(itemActions.selectedItemId.value as number) || 0"
+      :type="
+        (itemActions.selectedItemType.value as CourseExecutionType) || CourseExecutionType.LESSON
+      "
     />
     <CourseVisibilityChangeModal
-      v-if="showVisibilityChangeModal && isAdmin"
-      :isOpen="showVisibilityChangeModal"
-      :itemId="selectedLessonId as number"
-      :currentVisibility="selectedLessonVisibility as VisibilityStatus"
-      @onClose="showVisibilityChangeModal = false"
+      v-if="itemActions.showVisibilityChangeModal.value && isAdmin"
+      :isOpen="itemActions.showVisibilityChangeModal.value"
+      :itemId="(itemActions.selectedItemId.value as number) || 0"
+      :currentVisibility="
+        (itemActions.selectedCategoryVisibility.value as VisibilityStatus) || VisibilityStatus.SHOW
+      "
+      @onClose="itemActions.handleCloseVisibilityChangeModal"
       @onSave="handleVisibilityChangeSaveLesson"
-      :type="selectedAssignationsType as VisibilityType"
+      :type="itemActions.renderVisibilityType()"
       @onEdit="handleVisibilityChangeEditLesson"
     />
   </div>

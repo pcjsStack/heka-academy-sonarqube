@@ -882,7 +882,7 @@ defineExpose({
     >
       <div class="flex items-end">
         <BaseText
-          :text="t('pages.course.associations.thisCourse')"
+          :text="t('pages.lesson.associations.thisLesson')"
           :tone="900"
           color="neutral"
           font="semibold"
