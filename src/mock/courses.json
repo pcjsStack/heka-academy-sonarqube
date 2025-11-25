@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "name": "IJ Experience",
+    "categoryId": 1,
+    "isVisible": true,
+    "order": 1
+  },
+  {
+    "id": 2,
+    "name": "Growth Mindset",
+    "categoryId": 1,
+    "isVisible": true,
+    "order": 2
+  },
+  {
+    "id": 3,
+    "name": "Shoes",
+    "categoryId": 1,
+    "isVisible": true,
+    "order": 3
+  },
+  {
+    "id": 4,
+    "name": "Onboarding",
+    "categoryId": 1,
+    "isVisible": true,
+    "order": 4
+  },
+  {
+    "id": 5,
+    "name": "Product Storytelling",
+    "categoryId": 1,
+    "isVisible": true,
+    "order": 5
+  }
+]

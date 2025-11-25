@@ -1,0 +1,7 @@
+export { default as CourseCreationModal } from './CourseCreationModal.vue'
+export { default as CoursePublishSuccessModal } from './CoursePublishSuccessModal.vue'
+export { default as CourseFilesStep } from './steps/CourseFilesStep.vue'
+export { default as CourseSettingsStep } from './steps/CourseSettingsStep.vue'
+export { default as CourseAssociationsStep } from './steps/CourseAssociationsStep.vue'
+export { default as CourseRestrictionsStep } from './steps/CourseRestrictionsStep.vue'
+export { default as CourseParticipantsStep } from './steps/CourseParticipantsStep.vue'

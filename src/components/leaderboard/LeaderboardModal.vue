@@ -1,0 +1,353 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import { BaseSideModal, BaseText, BaseIcon, BaseRadioButton } from '@/components/common'
+import { useLeaderboardStore } from '@/stores/leaderboardStore'
+import { t } from '@/utils/i18n'
+import crownIcon from '@/assets/images/crown.svg'
+import type { LeaderBoardItem, CourseLeaderboard } from '@/types/LeaderBoard'
+
+const leaderboardStore = useLeaderboardStore()
+
+interface Tab {
+  id: number | 'all'
+  label: string
+  name: string
+  isAll?: boolean
+}
+
+// Emits
+const emit = defineEmits<{
+  close: []
+}>()
+
+// State
+const selectedType = ref<'lessons' | 'courses'>('courses')
+const activeTab = ref<number | 'all' | null>('all')
+const isLoading = ref(false)
+
+// Data
+const users = computed<LeaderBoardItem[]>(() => leaderboardStore.leaderboardItems)
+const courseLeaderboards = computed<CourseLeaderboard[]>(() => leaderboardStore.courseLeaderboards)
+
+// Generate tabs dynamically from courseLeaderboards with "All" as first tab
+const tabs = computed<Tab[]>(() => {
+  const allTab: Tab = {
+    id: 'all',
+    label: t('pages.leaderboard.tabs.all'),
+    name: t('pages.leaderboard.tabs.all'),
+    isAll: true,
+  }
+  const courseTabs = courseLeaderboards.value.map((item) => ({
+    id: item.id,
+    label: item.shortName || item.name,
+    name: item.name,
+    isAll: false,
+  }))
+  return [allTab, ...courseTabs]
+})
+
+// Fetch course/lesson leaderboard list when type changes
+watch(
+  selectedType,
+  async (newType) => {
+    isLoading.value = true
+    try {
+      // Always reset to "All" tab when switching types
+      activeTab.value = 'all'
+      leaderboardStore.resetLeaderboardItems()
+
+      await leaderboardStore.fetchCourseLeaderboard(newType === 'courses' ? 'course' : 'lessons')
+    } catch (error) {
+      console.error('Error fetching course leaderboard:', error)
+    } finally {
+      isLoading.value = false
+    }
+  },
+  { immediate: true },
+)
+
+// Fetch leaderboard items for selected tab
+const fetchLeaderboardItems = async (itemId?: number) => {
+  isLoading.value = true
+  try {
+    const params: {
+      ownerType: 'course' | 'lessons'
+      ownerId?: number
+      page: number
+      perPage: number
+    } = {
+      ownerType: selectedType.value === 'courses' ? 'course' : 'lessons',
+      page: 0,
+      perPage: 15,
+    }
+
+    // Only add ownerId if it's provided (not for "All" tab)
+    if (itemId) {
+      params.ownerId = itemId
+    }
+
+    await leaderboardStore.fetchLessonLeaderboard(params)
+  } catch (error) {
+    console.error('Error fetching leaderboard items:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Handle tab click
+const handleTabClick = async (tabId: number | 'all') => {
+  activeTab.value = tabId
+  if (tabId === 'all') {
+    // Fetch leaderboard items without ownerId for "All" tab
+    await fetchLeaderboardItems()
+  } else {
+    await fetchLeaderboardItems(tabId)
+  }
+}
+
+// Methods
+const handleClose = () => {
+  emit('close')
+}
+
+// Get user full name
+const getUserFullName = (user: LeaderBoardItem['user']): string => {
+  return `${user.firstName || ''} ${user.surname || ''}`.trim() || user.username || ''
+}
+
+// Get user image (with fallback)
+const getUserImage = (user: LeaderBoardItem['user']): string => {
+  return user.image || '/default-avatar.png'
+}
+</script>
+<template>
+  <BaseSideModal
+    :title="t('pages.leaderboard.title')"
+    :close-button="true"
+    custom-class="left-0"
+    :z-index="99999999"
+    @on-close="handleClose"
+  >
+    <div class="py-8 pb-[0] px-6">
+      <!-- Radio Buttons -->
+      <div class="flex gap-[64px] mb-8">
+        <BaseRadioButton
+          :model-value="selectedType"
+          value="lessons"
+          :label="t('pages.leaderboard.lessons')"
+          @update:model-value="selectedType = $event"
+          customInputStyles="w-[20px] h-[16px]"
+          wrapperClass="!gap-[12px]"
+          labelClass="!text-black/50"
+          labelActiveClass="!text-black/85"
+        />
+        <BaseRadioButton
+          :model-value="selectedType"
+          value="courses"
+          :label="t('pages.leaderboard.courses')"
+          @update:model-value="selectedType = $event"
+          customInputStyles="w-[20px] h-[16px]"
+          wrapperClass="!gap-[12px]"
+          labelClass="!text-black/50"
+          labelActiveClass="!text-black/85"
+        />
+      </div>
+
+      <!-- Tabs -->
+      <div
+        v-if="tabs.length > 0"
+        class="flex overflow-x-auto scrollbar-none mb-4"
+        style="scrollbar-width: none; -ms-overflow-style: none"
+      >
+        <div class="flex gap-0 min-w-max">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            :class="[
+              'py-2 px-4 text-sm leading-[22px] whitespace-nowrap !font-medium border-b-2 transition-colors flex-shrink-0 cursor-pointer',
+              activeTab === tab.id
+                ? 'text-primary-950 border-primary-950'
+                : 'text-neutral-500 border-neutral-200 hover:text-neutral-700',
+            ]"
+            @click="handleTabClick(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="isLoading && users.length === 0" class="flex items-center justify-center py-16">
+        <BaseText :text="t('types.loading.fetchingLessonLeaderboard')" type="p-sm" />
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else-if="!isLoading && users.length === 0 && tabs.length > 0"
+        class="flex flex-col items-center justify-center py-16"
+      >
+        <BaseIcon name="inbox" size="lg" color="neutral" :tone="300" class="mb-4" />
+        <BaseText :text="t('types.error.noDataFound')" type="p-sm" color="neutral" :tone="500" />
+      </div>
+
+      <!-- Top 3 Users -->
+      <div v-if="users.length >= 3" class="relative pt-[65px] mb-[46px]">
+        <div class="flex justify-evenly items-end relative z-10">
+          <!-- Rank 2 -->
+          <div class="flex flex-col items-center">
+            <div class="relative mb-2 flex flex-col items-center">
+              <img
+                :src="getUserImage(users[1]!.user)"
+                :alt="getUserFullName(users[1]!.user)"
+                class="w-[74px] h-[74px] rounded-full object-cover border-[3px] border-primary-850"
+              />
+              <div
+                class="w-[28px] h-[28px] rounded-full bg-primary-850 text-white text-[16px] leading-[19px] font-semibold flex items-center justify-center mt-[-18px]"
+              >
+                2
+              </div>
+            </div>
+            <BaseText
+              :text="getUserFullName(users[1]!.user)"
+              type="p-sm"
+              font="medium"
+              class="text-center !text-black/85 !leading-[17px] mb-[6px]"
+            />
+            <div
+              class="flex items-center gap-1 bg-warning-500/10 rounded-[7px] px-[6px] py-1 text-warning-500"
+            >
+              <BaseIcon name="stars" size="2xs" />
+              <BaseText
+                :text="users[1]!.percentage.toString() || '0'"
+                font="medium"
+                class="text-warning-500 !leading-[15px] !text-[12px]"
+              />
+            </div>
+          </div>
+
+          <!-- Rank 1 -->
+          <div class="flex flex-col items-center mb-[20px]">
+            <div class="relative mb-2 flex flex-col items-center">
+              <img
+                :src="crownIcon"
+                alt="crown-icon"
+                class="absolute -top-[28px] left-1/2 transform -translate-x-1/2 z-[-1] w-[34px] h-[34px]"
+              />
+              <img
+                :src="getUserImage(users[0]!.user)"
+                :alt="getUserFullName(users[0]!.user)"
+                class="w-[84px] h-[84px] rounded-full object-cover border-[4px] border-primary-950"
+              />
+              <div
+                class="w-[28px] h-[28px] rounded-full bg-primary-950 text-white text-[16px] leading-[19px] font-semibold flex items-center justify-center mt-[-18px]"
+              >
+                1
+              </div>
+            </div>
+            <BaseText
+              :text="getUserFullName(users[0]!.user)"
+              type="p-sm"
+              font="medium"
+              class="text-center !text-black/85 !leading-[17px] mb-[6px]"
+            />
+            <div
+              class="flex items-center gap-1 bg-warning-500/10 rounded-[7px] px-[6px] py-1 text-warning-500"
+            >
+              <BaseIcon name="stars" size="2xs" />
+              <BaseText
+                :text="users[0]!.percentage.toString() || '0'"
+                font="medium"
+                class="text-warning-500 !leading-[15px] !text-[12px]"
+              />
+            </div>
+          </div>
+
+          <!-- Rank 3 -->
+          <div class="flex flex-col items-center">
+            <div class="relative mb-2 flex flex-col items-center">
+              <img
+                :src="getUserImage(users[2]!.user)"
+                :alt="getUserFullName(users[2]!.user)"
+                class="w-[74px] h-[74px] rounded-full object-cover border-[3px] border-primary-850"
+              />
+              <div
+                class="w-[28px] h-[28px] rounded-full bg-primary-850 text-white text-[16px] leading-[19px] font-semibold flex items-center justify-center mt-[-18px]"
+              >
+                3
+              </div>
+            </div>
+            <BaseText
+              :text="getUserFullName(users[2]!.user)"
+              type="p-sm"
+              font="medium"
+              class="text-center !text-black/85 !leading-[17px] mb-[6px]"
+            />
+            <div
+              class="flex items-center gap-1 bg-warning-500/10 rounded-[7px] px-[6px] py-1 text-warning-500"
+            >
+              <BaseIcon name="stars" size="2xs" />
+              <BaseText
+                :text="users[2]!.percentage.toString() || '0'"
+                font="medium"
+                class="text-warning-500 !leading-[15px] !text-[12px]"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranked List (4+) -->
+      <div
+        v-if="users.length > 3"
+        class="relative overflow-x-auto max-h-[400px] flex flex-col gap-2"
+      >
+        <div
+          v-for="(user, index) in users.slice(3)"
+          :key="`${user.user.id}-${index}`"
+          class="flex items-center px-[20px] py-2 rounded-[16px] transition-colors bg-grey-50 hover:bg-gray-50"
+        >
+          <!-- Rank Number -->
+          <div class="w-[32px]">
+            <BaseText
+              :text="(index + 4).toString()"
+              type="p-sm"
+              font="medium"
+              class="!text-black/65 !leading-[17px]"
+            />
+          </div>
+
+          <!-- Profile Image -->
+          <div class="relative mr-4">
+            <img
+              :src="getUserImage(user.user)"
+              :alt="getUserFullName(user.user)"
+              class="w-9 h-9 rounded-full object-cover"
+            />
+          </div>
+
+          <!-- User Info -->
+          <div class="flex-1">
+            <BaseText
+              :text="getUserFullName(user.user)"
+              type="p-sm"
+              :tone="700"
+              font="medium"
+              class="!text-black/85 !leading-[17px]"
+            />
+          </div>
+
+          <!-- Score -->
+          <div class="flex items-center gap-1 text-warning-500">
+            <BaseIcon name="stars" size="2xs" />
+            <BaseText
+              :text="user.percentage.toString()"
+              font="medium"
+              class="text-warning-500 !leading-[15px] !text-[12px]"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </BaseSideModal>
+</template>
+<style scoped></style>

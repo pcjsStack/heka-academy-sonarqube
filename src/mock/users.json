@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Mark Carson",
+    "email": "mark.carson@example.com",
+    "role": "Student"
+  },
+  {
+    "id": 2,
+    "name": "Sarah Johnson",
+    "email": "sarah.johnson@example.com",
+    "role": "Teacher"
+  },
+  {
+    "id": 3,
+    "name": "Mike Davis",
+    "email": "mike.davis@example.com",
+    "role": "Student"
+  },
+  {
+    "id": 4,
+    "name": "Emily Wilson",
+    "email": "emily.wilson@example.com",
+    "role": "Student"
+  },
+  {
+    "id": 5,
+    "name": "David Brown",
+    "email": "david.brown@example.com",
+    "role": "Manager"
+  }
+]

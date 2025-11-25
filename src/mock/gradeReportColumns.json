@@ -1,0 +1,23 @@
+[
+  {
+    "key": "username",
+    "labelKey": "pages.gradeReport.columns.username",
+    "sortable": true,
+    "width": "flex-1",
+    "align": "left"
+  },
+  {
+    "key": "emailAddress",
+    "labelKey": "pages.gradeReport.columns.emailAddress",
+    "sortable": true,
+    "width": "flex-1",
+    "align": "left"
+  },
+  {
+    "key": "courseTotal",
+    "labelKey": "pages.gradeReport.columns.courseTotal",
+    "sortable": true,
+    "width": "w-32",
+    "align": "center"
+  }
+]

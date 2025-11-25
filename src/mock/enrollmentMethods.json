@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Manual Enrollments",
+    "users": 6,
+    "position": 1
+  },
+  {
+    "id": 2,
+    "name": "Guest Access",
+    "users": 0,
+    "position": 2
+  },
+  {
+    "id": 3,
+    "name": "Self Enrollment (Student)",
+    "users": 0,
+    "position": 3
+  },
+  {
+    "id": 4,
+    "name": "Cohort sync (LIU JO - Student)",
+    "users": 78,
+    "position": 4
+  }
+]

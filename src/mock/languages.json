@@ -1,0 +1,176 @@
+[
+  {
+    "id": 32,
+    "name": "english",
+    "code": "en",
+    "flag": "https://flagcdn.com/w40/gb.png"
+  },
+  {
+    "id": 35,
+    "name": "italian",
+    "code": "it",
+    "flag": "https://flagcdn.com/w40/it.png"
+  },
+  {
+    "id": 24,
+    "name": "french",
+    "code": "fr",
+    "flag": "https://flagcdn.com/w40/fr.png"
+  },
+  {
+    "id": 57,
+    "name": "spanish",
+    "code": "es",
+    "flag": "https://flagcdn.com/w40/es.png"
+  },
+  {
+    "id": 63,
+    "name": "german",
+    "code": "de",
+    "flag": "https://flagcdn.com/w40/de.png"
+  },
+  {
+    "id": 51,
+    "name": "romanian",
+    "code": "ro",
+    "flag": "https://flagcdn.com/w40/ro.png"
+  },
+  {
+    "id": 50,
+    "name": "portuguese",
+    "code": "pt",
+    "flag": "https://flagcdn.com/w40/pt.png"
+  },
+  {
+    "id": 49,
+    "name": "polish",
+    "code": "pl",
+    "flag": "https://flagcdn.com/w40/pl.png"
+  },
+  {
+    "id": 52,
+    "name": "russian",
+    "code": "ru",
+    "flag": "https://flagcdn.com/w40/ru.png"
+  },
+  {
+    "id": 28,
+    "name": "japanese",
+    "code": "ja",
+    "flag": "https://flagcdn.com/w40/jp.png"
+  },
+  {
+    "id": 37,
+    "name": "korean",
+    "code": "ko",
+    "flag": "https://flagcdn.com/w40/kr.png"
+  },
+  {
+    "id": 29,
+    "name": "greek",
+    "code": "el",
+    "flag": "https://flagcdn.com/w40/gr.png"
+  },
+  {
+    "id": 71,
+    "name": "hungarian",
+    "code": "hu",
+    "flag": "https://flagcdn.com/w40/hu.png"
+  },
+  {
+    "id": 47,
+    "name": "dutch",
+    "code": "nl",
+    "flag": "https://flagcdn.com/w40/nl.png"
+  },
+  {
+    "id": 58,
+    "name": "swedish",
+    "code": "sv",
+    "flag": "https://flagcdn.com/w40/se.png"
+  },
+  {
+    "id": 68,
+    "name": "turkish",
+    "code": "tr",
+    "flag": "https://flagcdn.com/w40/tr.png"
+  },
+  {
+    "id": 4,
+    "name": "arabic",
+    "code": "ar",
+    "flag": "https://flagcdn.com/w40/sa.png"
+  },
+  {
+    "id": 13,
+    "name": "chinese",
+    "code": "zh",
+    "flag": "https://flagcdn.com/w40/cn.png"
+  },
+  {
+    "id": 75,
+    "name": "chinese simplified",
+    "code": "zh-hans",
+    "flag": "https://flagcdn.com/w40/cn.png"
+  },
+  {
+    "id": 76,
+    "name": "hindi",
+    "code": "hi",
+    "flag": "https://flagcdn.com/w40/in.png"
+  },
+  {
+    "id": 77,
+    "name": "urdu",
+    "code": "ur",
+    "flag": "https://flagcdn.com/w40/pk.png"
+  },
+  {
+    "id": 78,
+    "name": "bengali",
+    "code": "bn",
+    "flag": "https://flagcdn.com/w40/bd.png"
+  },
+  {
+    "id": 79,
+    "name": "thai",
+    "code": "th",
+    "flag": "https://flagcdn.com/w40/th.png"
+  },
+  {
+    "id": 80,
+    "name": "vietnamese",
+    "code": "vi",
+    "flag": "https://flagcdn.com/w40/vn.png"
+  },
+  {
+    "id": 81,
+    "name": "hebrew",
+    "code": "he",
+    "flag": "https://flagcdn.com/w40/il.png"
+  },
+  {
+    "id": 82,
+    "name": "ukrainian",
+    "code": "uk",
+    "flag": "https://flagcdn.com/w40/ua.png"
+  },
+  {
+    "id": 83,
+    "name": "finnish",
+    "code": "fi",
+    "flag": "https://flagcdn.com/w40/fi.png"
+  },
+  {
+    "id": 84,
+    "name": "norwegian",
+    "code": "no",
+    "flag": "https://flagcdn.com/w40/no.png"
+  },
+  {
+    "id": 85,
+    "name": "danish",
+    "code": "da",
+    "flag": "https://flagcdn.com/w40/dk.png"
+  }
+]

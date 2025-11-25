@@ -1,0 +1,191 @@
+{
+  "id": "denim-jackets-quiz",
+  "title": "Quiz - Denim Jackets",
+  "currentStep": 1,
+  "steps": [
+    {
+      "id": 1,
+      "title": "Category 01 Stock management",
+      "isActive": true,
+      "isCompleted": false
+    },
+    {
+      "id": 2,
+      "title": "Category 02 Operational Efficiency",
+      "isActive": false,
+      "isCompleted": false
+    },
+    {
+      "id": 3,
+      "title": "Category 03 Weekly Check",
+      "isActive": false,
+      "isCompleted": false
+    }
+  ],
+  "categories": [
+    {
+      "id": "stock-management",
+      "title": "Category 01 Stock management",
+      "questions": [
+        {
+          "id": "1",
+          "question": "Were the staff members approachable and helpful?",
+          "type": "text",
+          "placeholder": "Enter your answer here",
+          "required": true,
+          "comment_required": true,
+          "photo_required": false
+        },
+        {
+          "id": "2",
+          "question": "On a scale of 1 to 10, how would you rate the overall condition and presentation of the store?",
+          "type": "rating",
+          "multiple": true,
+          "required": true,
+          "comment_required": false,
+          "photo_required": true
+        },
+        {
+          "id": "3",
+          "question": "Is the store layout easy to navigate?",
+          "type": "radio",
+          "options": ["Yes", "No"],
+          "required": true,
+          "comment_required": true,
+          "photo_required": true
+        },
+        {
+          "id": "4",
+          "question": "How would you rate the store's cleanliness?",
+          "type": "radio",
+          "options": ["Excellent", "Good", "Average", "Poor", "Very Poor"],
+          "required": true,
+          "comment_required": false,
+          "photo_required": false
+        },
+        {
+          "id": "5",
+          "question": "Which aspects of the store need improvement? (Select all that apply)",
+          "type": "checkbox",
+          "options": [
+            "Cleanliness",
+            "Staff helpfulness",
+            "Product availability",
+            "Store layout",
+            "Pricing visibility",
+            "Checkout process"
+          ],
+          "required": false,
+          "comment_required": true,
+          "photo_required": false
+        }
+      ]
+    },
+    {
+      "id": "operational-efficiency",
+      "title": "Category 02 Operational Efficiency",
+      "questions": [
+        {
+          "id": "6",
+          "question": "How would you rate the efficiency of the checkout process?",
+          "type": "text",
+          "placeholder": "Enter your answer here",
+          "required": true,
+          "comment_required": false,
+          "photo_required": true
+        },
+        {
+          "id": "7",
+          "question": "On a scale of 1 to 10, how would you rate the staff response time?",
+          "type": "rating",
+          "multiple": true,
+          "required": true,
+          "comment_required": false,
+          "photo_required": false
+        },
+        {
+          "id": "8",
+          "question": "Was the inventory well-organized and accessible?",
+          "type": "radio",
+          "options": ["Yes", "No"],
+          "required": true,
+          "comment_required": true,
+          "photo_required": false
+        },
+        {
+          "id": "9",
+          "question": "How would you rate the overall operational flow?",
+          "type": "radio",
+          "options": ["Excellent", "Good", "Average", "Poor", "Very Poor"],
+          "required": true,
+          "comment_required": false,
+          "photo_required": true
+        },
+        {
+          "id": "10",
+          "question": "Which operational areas need improvement? (Select all that apply)",
+          "type": "checkbox",
+          "options": [
+            "Checkout speed",
+            "Staff availability",
+            "Inventory management",
+            "Customer service",
+            "Queue management",
+            "Payment processing"
+          ],
+          "required": false,
+          "comment_required": false,
+          "photo_required": false
+        }
+      ]
+    },
+    {
+      "id": "weekly-check",
+      "title": "Category 03 Weekly Check",
+      "questions": [
+        {
+          "id": "11",
+          "question": "How would you rate the overall store appearance and tidiness?",
+          "type": "rating",
+          "multiple": true,
+          "required": true,
+          "comment_required": true,
+          "photo_required": false
+        },
+        {
+          "id": "12",
+          "question": "Are all promotional displays correctly set up and visible?",
+          "type": "radio",
+          "options": ["Yes", "No"],
+          "required": true,
+          "comment_required": false,
+          "photo_required": false
+        },
+        {
+          "id": "13",
+          "question": "Were there any issues with product placement or stock levels?",
+          "type": "text",
+          "placeholder": "Enter your answer here",
+          "required": true,
+          "comment_required": false,
+          "photo_required": true
+        },
+        {
+          "id": "14",
+          "question": "Which areas require immediate attention for improvement?",
+          "type": "checkbox",
+          "options": [
+            "Store cleanliness",
+            "Staff training",
+            "Product display",
+            "Security",
+            "Customer flow"
+          ],
+          "required": false,
+          "comment_required": true,
+          "photo_required": true
+        }
+      ]
+    }
+  ]
+}

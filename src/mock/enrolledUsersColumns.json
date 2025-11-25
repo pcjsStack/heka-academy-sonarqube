@@ -1,0 +1,44 @@
+[
+  {
+    "key": "username",
+    "label": "pages.course.participants.columns.username",
+    "sortable": true,
+    "align": "left",
+    "width": "120px"
+  },
+  {
+    "key": "email",
+    "label": "pages.course.participants.columns.email",
+    "sortable": true,
+    "align": "left",
+    "width": "150px"
+  },
+  {
+    "key": "role",
+    "label": "pages.course.participants.columns.role",
+    "sortable": true,
+    "align": "left",
+    "width": "70px"
+  },
+  {
+    "key": "groups",
+    "label": "pages.course.participants.columns.groups",
+    "sortable": false,
+    "align": "left",
+    "width": "90px"
+  },
+  {
+    "key": "lastAccess",
+    "label": "pages.course.participants.columns.lastAccess",
+    "sortable": true,
+    "align": "left",
+    "width": "130px"
+  },
+  {
+    "key": "status",
+    "label": "pages.course.participants.columns.status",
+    "sortable": true,
+    "align": "center",
+    "width": "70px"
+  }
+]

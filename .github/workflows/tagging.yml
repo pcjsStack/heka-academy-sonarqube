@@ -1,0 +1,19 @@
+name: Shared Auto Tagging
+
+on:
+  push:
+    branches:
+      - develop
+      - release/*
+      - staging
+      - preview
+      - hekanize/*
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  shared-tagging:
+    uses: hekanize/51_hekanize-github-workflows/.github/workflows/shared-tagging.yml@develop
+    secrets: inherit

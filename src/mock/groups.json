@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "None"
+  },
+  {
+    "id": 2,
+    "name": "Group A"
+  },
+  {
+    "id": 3,
+    "name": "Group B"
+  },
+  {
+    "id": 4,
+    "name": "Advanced Users"
+  },
+  {
+    "id": 5,
+    "name": "Beginner Users"
+  }
+]

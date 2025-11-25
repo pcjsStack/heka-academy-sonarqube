@@ -1,0 +1,16 @@
+[
+  {
+    "key": "username",
+    "labelKey": "pages.reports.columns.username",
+    "sortable": true,
+    "width": "flex-1",
+    "align": "left"
+  },
+  {
+    "key": "allActions",
+    "labelKey": "pages.reports.columns.allActions",
+    "sortable": true,
+    "width": "flex-1",
+    "align": "left"
+  }
+]

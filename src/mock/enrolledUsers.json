@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "username": "Sandra Aglietti",
+    "email": "sandra@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "2 months 3 days 10 hours",
+    "status": "Active"
+  },
+  {
+    "id": 2,
+    "username": "Miriam Atterga",
+    "email": "sandra@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "Never",
+    "status": "In-Active"
+  },
+  {
+    "id": 3,
+    "username": "Federica Cante Kasper",
+    "email": "federica@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "Never",
+    "status": "In-Active"
+  },
+  {
+    "id": 4,
+    "username": "John Doe",
+    "email": "john@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "1 week 2 days 5 hours",
+    "status": "Active"
+  },
+  {
+    "id": 5,
+    "username": "Jane Smith",
+    "email": "jane@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "3 days 12 hours",
+    "status": "Active"
+  },
+  {
+    "id": 6,
+    "username": "Michael Johnson",
+    "email": "michael@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "1 month 1 week",
+    "status": "Active"
+  },
+  {
+    "id": 7,
+    "username": "Sarah Wilson",
+    "email": "sarah@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "2 weeks 3 days",
+    "status": "Active"
+  },
+  {
+    "id": 8,
+    "username": "David Brown",
+    "email": "david@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "5 days 8 hours",
+    "status": "Active"
+  },
+  {
+    "id": 9,
+    "username": "Lisa Davis",
+    "email": "lisa@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "1 day 4 hours",
+    "status": "Active"
+  },
+  {
+    "id": 10,
+    "username": "Robert Miller",
+    "email": "robert@hekanize.com",
+    "role": "Student",
+    "groups": "No groups",
+    "lastAccess": "6 hours 30 minutes",
+    "status": "Active"
+  }
+]

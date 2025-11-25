@@ -1,0 +1,5 @@
+export { default as AddCategoryModal } from './AddCategoryModal.vue'
+export { default as CategoryAssociationsStep } from './steps/CategoryAssociationsStep.vue'
+export { default as CategoryParticipantsStep } from './steps/CategoryParticipantsStep.vue'
+export { default as SettingsTooltip } from './SettingsTooltip.vue'
+export { default as CourseVisibilityChangeModal } from './CourseVisibilityChangeModal.vue'

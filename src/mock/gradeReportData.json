@@ -1,0 +1,37 @@
+{
+  "grades": [
+    { "username": "Sandra Aglietti", "emailAddress": "sandra@hekanize.com", "courseTotal": 20 },
+    {
+      "username": "Daniela Carmen Artigas",
+      "emailAddress": "sandra@hekanize.com",
+      "courseTotal": 10
+    },
+    { "username": "Miriam Atterga", "emailAddress": "sandra@hekanize.com", "courseTotal": 8 },
+    { "username": "Giovanni Barbato", "emailAddress": "sandra@hekanize.com", "courseTotal": null },
+    { "username": "Cristina Bassi", "emailAddress": "sandra@hekanize.com", "courseTotal": 9 },
+    { "username": "Fabiana Bellini", "emailAddress": "sandra@hekanize.com", "courseTotal": null },
+    { "username": "Giorgia Bergamin", "emailAddress": "sandra@hekanize.com", "courseTotal": 14 },
+    {
+      "username": "Federica Cante Kasper",
+      "emailAddress": "sandra@hekanize.com",
+      "courseTotal": 11
+    },
+    { "username": "Debora Daniella", "emailAddress": "sandra@hekanize.com", "courseTotal": 10 },
+    { "username": "Laia Chanco Muooz", "emailAddress": "sandra@hekanize.com", "courseTotal": 16 },
+    { "username": "Marco Rossi", "emailAddress": "marco@hekanize.com", "courseTotal": 18 },
+    { "username": "Elena Bianchi", "emailAddress": "elena@hekanize.com", "courseTotal": 12 },
+    { "username": "Luca Ferrari", "emailAddress": "luca@hekanize.com", "courseTotal": null },
+    { "username": "Anna Romano", "emailAddress": "anna@hekanize.com", "courseTotal": 15 },
+    { "username": "Giuseppe Conti", "emailAddress": "giuseppe@hekanize.com", "courseTotal": 7 },
+    { "username": "Francesca Ricci", "emailAddress": "francesca@hekanize.com", "courseTotal": 13 },
+    { "username": "Andrea Lombardi", "emailAddress": "andrea@hekanize.com", "courseTotal": 19 },
+    {
+      "username": "Valentina Moretti",
+      "emailAddress": "valentina@hekanize.com",
+      "courseTotal": null
+    },
+    { "username": "Roberto Galli", "emailAddress": "roberto@hekanize.com", "courseTotal": 17 },
+    { "username": "Silvia Rinaldi", "emailAddress": "silvia@hekanize.com", "courseTotal": 6 }
+  ],
+  "overallAverage": 4.5
+}

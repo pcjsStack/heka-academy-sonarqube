@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "name": "Training and Skill development",
+    "isVisible": true,
+    "courseCount": 5,
+    "order": 1
+  },
+  {
+    "id": 2,
+    "name": "Test",
+    "isVisible": false,
+    "courseCount": 1,
+    "order": 2
+  },
+  {
+    "id": 3,
+    "name": "Training and Skill development",
+    "isVisible": true,
+    "courseCount": 3,
+    "order": 3
+  }
+]

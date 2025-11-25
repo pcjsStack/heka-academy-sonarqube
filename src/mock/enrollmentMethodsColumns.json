@@ -1,0 +1,30 @@
+[
+  {
+    "key": "name",
+    "label": "pages.course.enrollmentMethods.columns.name",
+    "sortable": true,
+    "align": "left",
+    "width": "200px"
+  },
+  {
+    "key": "users",
+    "label": "pages.course.enrollmentMethods.columns.users",
+    "sortable": true,
+    "align": "center",
+    "width": "100px"
+  },
+  {
+    "key": "upDown",
+    "label": "pages.course.enrollmentMethods.columns.upDown",
+    "sortable": true,
+    "align": "center",
+    "width": "100px"
+  },
+  {
+    "key": "edit",
+    "label": "pages.course.enrollmentMethods.columns.edit",
+    "sortable": false,
+    "align": "center",
+    "width": "120px"
+  }
+]
