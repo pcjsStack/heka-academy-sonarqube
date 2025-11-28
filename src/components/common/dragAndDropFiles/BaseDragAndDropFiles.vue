@@ -224,7 +224,17 @@ const validateFileSize = (file: File): boolean => {
 
   const fileSizeInMB = file.size / (1024 * 1024)
   if (fileSizeInMB > props.maxSize) {
-    const message = `File "${file.name}" exceeds the maximum size of ${props.maxSize} MB. File size: ${fileSizeInMB.toFixed(2)} MB`
+    // Format max size for display (show GB if >= 1024 MB)
+    const maxSizeDisplay =
+      props.maxSize >= 1024 ? `${(props.maxSize / 1024).toFixed(0)} GB` : `${props.maxSize} MB`
+
+    // Format file size for display
+    const fileSizeDisplay =
+      fileSizeInMB >= 1024
+        ? `${(fileSizeInMB / 1024).toFixed(2)} GB`
+        : `${fileSizeInMB.toFixed(2)} MB`
+
+    const message = `File "${file.name}" exceeds the maximum size of ${maxSizeDisplay}. File size: ${fileSizeDisplay}`
     errorMessage.value = message
     emit('error', message)
     return false

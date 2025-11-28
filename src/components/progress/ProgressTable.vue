@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { BaseSideModal } from '@/components/common'
 import ProgressTableContent from './ProgressTableContent.vue'
+import { useCourseStore } from '@/stores/courseStore'
 import { CourseExecutionType } from '@/types/Course'
 import { t } from '@/utils/i18n'
 
@@ -18,8 +19,9 @@ withDefaults(
 const emit = defineEmits<{
   (e: 'onClose'): void
 }>()
-
+const courseStore = useCourseStore()
 const handleClose = () => {
+  courseStore.resetCourseParticipants()
   emit('onClose')
 }
 </script>

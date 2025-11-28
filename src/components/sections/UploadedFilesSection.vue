@@ -26,7 +26,7 @@ const loadFiles = async () => {
   await uploadFilesStore.fetchFiles({
     page: 0,
     perPage: 8,
-    order: 'desc',
+    order: 'asc',
     orderColumn: 'customFileName',
     search: '',
   })

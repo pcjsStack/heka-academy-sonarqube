@@ -2,10 +2,7 @@
 import { computed } from 'vue'
 import { BaseSideModal, BaseText, BaseCheckbox, BaseButton } from '@/components/common'
 import { t } from '@/utils/i18n'
-
-export interface BadgeSkillsFilters {
-  deleted?: boolean
-}
+import type { BadgeSkillsFilters } from '@/types/BadgeAndSkill'
 
 const emit = defineEmits<{
   (e: 'close'): void

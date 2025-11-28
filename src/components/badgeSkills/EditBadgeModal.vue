@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { debounce } from 'lodash'
 import { BaseSideModal, BaseButton } from '@/components/common'
 import BadgeForm from './BadgeForm.vue'
 import BadgeSkillsSuccessScreen from './BadgeSkillsSuccessScreen.vue'
@@ -12,9 +13,15 @@ import lessonsService from '@/services/lessons'
 import quizService from '@/services/quiz'
 import { t } from '@/utils/i18n'
 import { createBadgeFormData } from '@/utils/badgeSkillsPayload'
-import type { Lesson } from '@/types/Lessons'
+import type { Lesson, Assignation } from '@/types/Lessons'
 import type { quizItem } from '@/types/Quiz'
-import type { BadgeFormData, BadgeFormValidation, GetBadgesParams } from '@/types/BadgeAndSkill'
+import type {
+  BadgeFormData,
+  BadgeFormValidation,
+  GetBadgesParams,
+  StoredAssociations,
+  ExtendedBadgeAssociations,
+} from '@/types/BadgeAndSkill'
 
 interface Props {
   show: boolean
@@ -34,12 +41,29 @@ const badgeStore = useBadgeAndSkillStore()
 // Loading flags to prevent multiple simultaneous calls
 const isLoadingLessons = ref(false)
 const isLoadingQuizzes = ref(false)
+
+// Search queries for each association type
+const searchQueries = ref({
+  file: '',
+  course: '',
+  lessons: '',
+  quiz: '',
+})
+
 const emit = defineEmits<{
   close: []
   update: [badgeId: number, badgeData: BadgeFormData]
 }>()
 
 const showSuccessScreen = ref<boolean>(false)
+
+// Store full association objects from initialBadgeData
+const storedAssociations = ref<StoredAssociations>({
+  files: [],
+  courses: [],
+  lessons: [],
+  quizzes: [],
+})
 
 // Form data
 const badgeData = ref<BadgeFormData>({
@@ -65,127 +89,135 @@ const badgeValidation = ref<BadgeFormValidation>({
 // Computed validation
 const isSaveEnabled = computed(() => badgeValidation.value.isFormValid)
 
-// Association options
-const associationOptions = computed(() => ({
-  file: uploadFilesStore.allFiles
+// Association options - add missing IDs from badgeData.associations
+const associationOptions = computed(() => {
+  const fileOptions = uploadFilesStore.allFiles
     .filter((file) => file.id && file.fileName)
     .map((file) => ({
       value: String(file.id),
-      label: file.fileName,
-    })),
-  course: courseStore.courses
+      label: file.customFileName || file.fileName,
+    }))
+
+  const courseOptions = courseStore.courses
     .filter((course) => course.id && course.name)
     .map((course) => ({
       value: String(course.id),
       label: course.name,
-    })),
-  lessons: lessonsStore.lessons
+    }))
+
+  const lessonOptions = lessonsStore.lessons
     .filter((lesson) => lesson.id && lesson.name)
     .map((lesson) => ({
       value: String(lesson.id),
       label: lesson.name,
-    })),
-  quiz: quizStore.quizzes
+    }))
+
+  const quizOptions = quizStore.quizzes
     .filter((quiz) => quiz.id && quiz.title)
     .map((quiz) => ({
       value: String(quiz.id),
       label: quiz.title,
-    })),
-}))
+    }))
 
-// Function to load missing association options
-const loadMissingAssociationOptions = async (associationIds: {
-  fileIds: string[]
-  courseIds: string[]
-  lessonIds: string[]
-  quizIds: string[]
-}) => {
-  const loadPromises: Promise<void>[] = []
+  // Add missing IDs from badgeData.associations using stored full objects
+  const selectedFileIds = new Set(badgeData.value.associations.fileIds || [])
+  const selectedCourseIds = new Set(badgeData.value.associations.courseIds || [])
+  const selectedLessonIds = new Set(badgeData.value.associations.lessonIds || [])
+  const selectedQuizIds = new Set(badgeData.value.associations.quizIds || [])
 
-  // Load missing courses
-  if (associationIds.courseIds.length > 0) {
-    const missingCourseIds = associationIds.courseIds.filter(
-      (id) => !courseStore.courses.some((course) => course.id?.toString() === id),
-    )
-    if (missingCourseIds.length > 0) {
-      // Try to load more courses
-      if (courseStore.coursesCurrentPage < courseStore.coursesTotalPages) {
-        loadPromises.push(
-          courseStore.loadMoreCourses({
-            perPage: 20,
-            order: 'asc',
-            orderColumn: 'name',
-            search: '',
-            isAdmin: true,
-          }),
-        )
-      }
+  // Add missing files
+  storedAssociations.value.files.forEach((assignation: Assignation) => {
+    const id = String(assignation.relatedId)
+    if (selectedFileIds.has(id) && !fileOptions.some((opt) => opt.value === id)) {
+      const model = assignation.model as unknown as Record<string, unknown>
+      fileOptions.push({
+        value: id,
+        label: (model?.customFileName as string) || (model?.fileName as string) || `File #${id}`,
+      })
     }
-  }
+  })
 
-  // Load missing lessons
-  if (associationIds.lessonIds.length > 0) {
-    const missingLessonIds = associationIds.lessonIds.filter(
-      (id) => !lessonsStore.lessons.some((lesson) => lesson.id?.toString() === id),
-    )
-    if (missingLessonIds.length > 0) {
-      // Try to load more lessons
-      if (lessonsStore.page + 1 < lessonsStore.total) {
-        loadPromises.push(
-          lessonsStore.fetchLessons({
-            page: lessonsStore.page + 1,
-            perPage: 20,
-            order: 'asc',
-            orderColumn: 'name',
-            isAdmin: true,
-          }),
-        )
-      }
+  // Add missing courses
+  storedAssociations.value.courses.forEach((assignation: Assignation) => {
+    const id = String(assignation.relatedId)
+    if (selectedCourseIds.has(id) && !courseOptions.some((opt) => opt.value === id)) {
+      const model = assignation.model as unknown as Record<string, unknown>
+      courseOptions.push({
+        value: id,
+        label: (model?.name as string) || `Course #${id}`,
+      })
     }
-  }
+  })
 
-  // Load missing quizzes
-  if (associationIds.quizIds.length > 0) {
-    const missingQuizIds = associationIds.quizIds.filter(
-      (id) => !quizStore.quizzes.some((quiz) => quiz.id?.toString() === id),
-    )
-    if (missingQuizIds.length > 0) {
-      // Try to load more quizzes
-      if (quizStore.page + 1 < quizStore.total) {
-        loadPromises.push(
-          quizStore.fetchQuizzes({
-            page: quizStore.page + 1,
-            perPage: 20,
-            order: 'asc',
-            orderColumn: 'title',
-            isAdmin: true,
-          }),
-        )
-      }
+  // Add missing lessons
+  storedAssociations.value.lessons.forEach((assignation: Assignation) => {
+    const id = String(assignation.relatedId)
+    if (selectedLessonIds.has(id) && !lessonOptions.some((opt) => opt.value === id)) {
+      const model = assignation.model as unknown as Record<string, unknown>
+      lessonOptions.push({
+        value: id,
+        label: (model?.name as string) || `Lesson #${id}`,
+      })
     }
-  }
+  })
 
-  await Promise.all(loadPromises)
-}
+  // Add missing quizzes
+  storedAssociations.value.quizzes.forEach((assignation: Assignation) => {
+    const id = String(assignation.relatedId)
+    if (selectedQuizIds.has(id) && !quizOptions.some((opt) => opt.value === id)) {
+      const model = assignation.model as unknown as Record<string, unknown>
+      quizOptions.push({
+        value: id,
+        label: (model?.title as string) || `Quiz #${id}`,
+      })
+    }
+  })
+
+  return {
+    file: fileOptions,
+    course: courseOptions,
+    lessons: lessonOptions,
+    quiz: quizOptions,
+  }
+})
 
 // Watch for initial data changes and populate form
 watch(
   () => props.initialBadgeData,
   async (newData) => {
     if (newData) {
-      // Ensure options are loaded before setting associations
-      // Load all associations if they exist to ensure options are available
-      const associationIds = {
-        fileIds: newData.associations?.fileIds || [],
-        courseIds: newData.associations?.courseIds || [],
-        lessonIds: newData.associations?.lessonIds || [],
-        quizIds: newData.associations?.quizIds || [],
+      // Store full association objects if they exist (from editingBadgeData.associations)
+      const associations = newData.associations as ExtendedBadgeAssociations | undefined
+
+      if (associations) {
+        storedAssociations.value = {
+          files: associations.files || [],
+          courses: associations.courses || [],
+          lessons: associations.lessons || [],
+          quizzes: associations.quizzes || [],
+        }
       }
 
-      // Load missing options for associations
-      await loadMissingAssociationOptions(associationIds)
+      // Extract IDs from full objects or use existing IDs
+      const associationIds = {
+        fileIds:
+          associations?.files?.map((assignation: Assignation) => String(assignation.relatedId)) ||
+          associations?.fileIds ||
+          [],
+        courseIds:
+          associations?.courses?.map((assignation: Assignation) => String(assignation.relatedId)) ||
+          associations?.courseIds ||
+          [],
+        lessonIds:
+          associations?.lessons?.map((assignation: Assignation) => String(assignation.relatedId)) ||
+          associations?.lessonIds ||
+          [],
+        quizIds:
+          associations?.quizzes?.map((assignation: Assignation) => String(assignation.relatedId)) ||
+          associations?.quizIds ||
+          [],
+      }
 
-      // Wait for next tick to ensure options are computed
       await nextTick()
 
       badgeData.value = {
@@ -214,7 +246,8 @@ const handleFileScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'customFileName',
-      search: '',
+      search: searchQueries.value.file,
+      isAdmin: true,
     })
   } catch (error) {
     console.error('Error loading more files:', error)
@@ -234,7 +267,8 @@ const handleCourseScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'name',
-      search: '',
+      search: searchQueries.value.course,
+      isAdmin: true,
     })
   } catch (error) {
     console.error('Error loading more courses:', error)
@@ -251,8 +285,9 @@ const handleLessonsScrollBottom = async () => {
     const response = await lessonsService.getLessons({
       page: lessonsStore.page + 1,
       perPage: 8,
-      order: 'desc',
-      orderColumn: 'id',
+      order: 'asc',
+      orderColumn: 'name',
+      search: searchQueries.value.lessons,
       isAdmin: true,
     })
     const existingIds = new Set(lessonsStore.lessons.map((l) => l.id))
@@ -277,8 +312,9 @@ const handleQuizScrollBottom = async () => {
     const response = await quizService.getQuizzes({
       page: quizStore.page + 1,
       perPage: 8,
-      order: 'desc',
-      orderColumn: 'id',
+      order: 'asc',
+      orderColumn: 'title',
+      search: searchQueries.value.quiz,
       isAdmin: true,
     })
     const existingIds = new Set(quizStore.quizzes.map((q) => q.id))
@@ -310,6 +346,64 @@ const handleScrollBottom = (type: 'file' | 'course' | 'lessons' | 'quiz') => {
   }
 }
 
+// Handle search queries - reset pagination and fetch with search (debounced)
+const handleSearch = debounce(
+  async (type: 'file' | 'course' | 'lessons' | 'quiz', query: string) => {
+    // Update search query
+    searchQueries.value[type] = query
+
+    // Reset pagination and clear existing data
+    switch (type) {
+      case 'file':
+        // Reset pagination - fetchFiles will replace the files list
+        await uploadFilesStore.fetchFiles({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'customFileName',
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'course':
+        courseStore.coursesCurrentPage = 0
+        courseStore.courses = []
+        await courseStore.fetchCourses({
+          page: 0,
+          perPage: 8,
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'lessons':
+        lessonsStore.page = 0
+        lessonsStore.lessons = []
+        await lessonsStore.fetchLessons({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'name',
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'quiz':
+        quizStore.page = 0
+        quizStore.quizzes = []
+        await quizStore.fetchQuizzes({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'title',
+          search: query,
+          isAdmin: true,
+        })
+        break
+    }
+  },
+  500,
+) // 500ms debounce delay
+
 const handleUpdate = async () => {
   if (props.badgeId) {
     try {
@@ -330,6 +424,8 @@ const handleUpdate = async () => {
 }
 
 const handleCancel = () => {
+  // Reset stored associations
+  storedAssociations.value = { files: [], courses: [], lessons: [], quizzes: [] }
   emit('close')
 }
 
@@ -339,6 +435,8 @@ const handleSuccessClose = () => {
 
 const handleSuccessDone = () => {
   showSuccessScreen.value = false
+  // Reset stored associations
+  storedAssociations.value = { files: [], courses: [], lessons: [], quizzes: [] }
   emit('close')
 }
 
@@ -408,6 +506,7 @@ onMounted(async () => {
           :association-options="associationOptions"
           @validation-change="handleBadgeValidationChange"
           @scroll-bottom="handleScrollBottom"
+          @search="handleSearch"
         />
       </div>
     </div>

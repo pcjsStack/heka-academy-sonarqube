@@ -738,16 +738,19 @@ const showNoDataMessage = computed(() => {
   }
 })
 
-const onRightScroll = async (e: Event) => {
-  const target = e.target as HTMLElement
-  if (!target) return
-  const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 80
-  if (!nearBottom) return
+// Handle load more button click
+const handleLoadMore = async () => {
   if (associationTab.value === 'courses') await loadCourses()
   if (associationTab.value === 'lessons') await loadLessons()
   if (associationTab.value === 'files') await loadFiles()
   if (associationTab.value === 'quizzes') await loadQuizzes()
 }
+
+// Check if load more button should be shown
+const showLoadMoreButton = computed(() => {
+  const currentTab = associationTab.value
+  return hasMore.value[currentTab] && !isLoading.value[currentTab] && rightList.value.length > 0
+})
 
 // Toggle expand/collapse for an item (accordion behavior - only one at a time)
 const toggleExpanded = async (
@@ -1168,7 +1171,6 @@ defineExpose({
       <!-- Right: Association content area -->
       <div
         class="lg:col-span-1 lg:border-l lg:border-neutral-200 lg:pl-5 pt-4 h-full overflow-y-auto no-scrollbar"
-        @scroll.passive="onRightScroll"
       >
         <div class="space-y-3">
           <VueDraggable v-model="rightList" :group="rightGroup" class="space-y-3">
@@ -1296,6 +1298,19 @@ defineExpose({
               <BaseIcon name="inbox" size="lg" color="neutral" :tone="300" />
               <BaseText :text="notFoundMessage" :tone="500" color="neutral" type="p-sm" />
             </div>
+          </div>
+
+          <!-- Load More Button -->
+          <div v-if="showLoadMoreButton" class="py-4 flex justify-center">
+            <BaseButton
+              :text="t('pages.course.associations.loadMore')"
+              variant="outline"
+              color="primary"
+              size="sm"
+              :disabled="isCurrentTabLoading"
+              @onClick="handleLoadMore"
+              class="!font-medium"
+            />
           </div>
         </div>
       </div>

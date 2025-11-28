@@ -6,6 +6,7 @@
     fullscreen
     size="full"
     @onClose="handleCancel"
+    :enable-scroll="true"
   >
     <template #header-actions>
       <div class="flex items-center gap-2 md:gap-1.5 lg:gap-2">
@@ -210,11 +211,11 @@ const formattedParticipants = computed<ExistingParticipant[]>(() => {
 
       return {
         index: p.order || index,
-        id: p.relatedId,
-        type: type,
-        name: '',
+        id: p.model?.id || '',
+        type: type || '',
+        name: p.model?.name || '',
         surname: '',
-        fullName: '',
+        fullName: p.model?.name || '',
         email: '',
       }
     })

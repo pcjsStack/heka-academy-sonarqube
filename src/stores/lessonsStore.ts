@@ -12,7 +12,7 @@ export const useLessonsStore = defineStore('lessons', {
   state: () => ({
     lessons: [] as Lesson[],
     page: 0,
-    limit: 10,
+    limit: 12,
     total: 0,
     lessonDetails: null as LessonDetails | null,
   }),

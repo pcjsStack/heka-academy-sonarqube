@@ -199,10 +199,10 @@ const handleVisibilityChangeEdit = async () => {
         <template #slide="{ item }">
           <BaseCard
             :title="item.name"
-            :category="item.status"
+            :category="''"
             :categoryColor="'blue'"
-            :mentor="`${item.user.firstName} ${item.user.surname}`"
-            :mentorAvatar="`${item.user.firstName} ${item.user.surname}`"
+            :mentor="(item.user?.firstName || '') + ' ' + (item.user?.surname || '')"
+            :mentorAvatar="(item.user?.firstName || '') + ' ' + (item.user?.surname || '')"
             :progress="item.execution?.percentage || 0"
             :thumbnail="item.imageUrl || ''"
             :isEditable="isAdmin"

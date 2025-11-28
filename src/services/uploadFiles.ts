@@ -3,6 +3,8 @@ import type { GetFilesParams, UpdateFileParams } from '@/types/uploadFiles'
 import type { AxiosResponse } from 'axios'
 import { t } from '@/utils/i18n'
 
+import axios from 'axios'
+
 class UploadFilesService {
   async uploadFiles(formData: FormData) {
     const response = await axiosInstance.post(`${academyPrefix}/catalog/files`, formData, {
@@ -11,6 +13,46 @@ class UploadFilesService {
       },
       loadingMessage: t('types.loading.uploadingFiles'),
       showLoader: true,
+    })
+    return response
+  }
+
+  async getPresignedUrl(
+    fileName: string,
+    fileType: string,
+    fileSize: number,
+    payload: { visibility: string; status: string },
+  ) {
+    const response = await axiosInstance.post(
+      `${academyPrefix}/catalog/files/generate-presigned-url`,
+      payload,
+      {
+        params: { fileName, fileType, fileSize },
+        showLoader: false,
+      },
+    )
+    return response.data
+  }
+
+  async uploadToS3(
+    url: string,
+    file: File,
+    onProgress?: (progress: number) => void,
+    abortSignal?: AbortSignal,
+  ) {
+    // Use a direct axios call to avoid interceptors that might add headers or auth tokens
+    // which would break the S3 signature
+    const response = await axios.put(url, file, {
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+      signal: abortSignal,
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          onProgress(percentCompleted)
+        }
+      },
     })
     return response
   }

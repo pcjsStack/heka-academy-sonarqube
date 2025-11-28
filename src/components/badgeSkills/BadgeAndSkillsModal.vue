@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { debounce } from 'lodash'
 import { BaseSideModal, BaseButton } from '@/components/common'
 import BadgeForm from './BadgeForm.vue'
 import SkillsForm from './SkillsForm.vue'
@@ -58,10 +59,10 @@ const skillsData = ref<SkillsFormData>({
 
 // Validation states
 const badgeValidation = ref<BadgeFormValidation>({
-  isNameValid: false,
-  isImageValid: false,
-  isAssociationValid: true, // Initially true since validation only applies when name and image are filled
-  isFormValid: false,
+  isNameValid: true, // Initially true since badge is optional
+  isImageValid: true, // Initially true since badge is optional
+  isAssociationValid: true, // Initially true since badge is optional
+  isFormValid: true, // Initially true since badge is optional
 })
 
 const skillsValidation = ref<SkillsFormValidation>({
@@ -71,6 +72,9 @@ const skillsValidation = ref<SkillsFormValidation>({
 })
 
 // Computed validation
+// Save is enabled if:
+// - Badge form is valid (either all empty or all required fields filled)
+// - AND Skills form is valid
 const overallValidation = computed(
   (): BadgeSkillsValidation => ({
     badge: badgeValidation.value,
@@ -85,7 +89,7 @@ const associationOptions = computed(() => ({
     .filter((file) => file.id && file.fileName) // Filter out invalid files
     .map((file) => ({
       value: String(file.id), // Use id instead of uuid
-      label: file.fileName,
+      label: file.customFileName || file.fileName,
     })),
   course: courseStore.courses
     .filter((course) => course.id && course.name) // Filter out invalid courses
@@ -126,7 +130,7 @@ const handleFileScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'customFileName',
-      search: '',
+      search: searchQueries.value.file,
       isAdmin: true,
     })
   } catch (error) {
@@ -147,7 +151,7 @@ const handleCourseScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'name',
-      search: '',
+      search: searchQueries.value.course,
       isAdmin: true,
     })
   } catch (error) {
@@ -158,6 +162,14 @@ const handleCourseScrollBottom = async () => {
 // Loading flags to prevent multiple simultaneous calls
 const isLoadingLessons = ref(false)
 const isLoadingQuizzes = ref(false)
+
+// Search queries for each association type
+const searchQueries = ref({
+  file: '',
+  course: '',
+  lessons: '',
+  quiz: '',
+})
 
 const handleLessonsScrollBottom = async () => {
   // Check if we've reached the last page (pages are 0-based, totalPage is count)
@@ -172,6 +184,7 @@ const handleLessonsScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'name',
+      search: searchQueries.value.lessons,
       isAdmin: true,
     })
     // Filter out duplicates and append new lessons
@@ -200,6 +213,7 @@ const handleQuizScrollBottom = async () => {
       perPage: 8,
       order: 'asc',
       orderColumn: 'title',
+      search: searchQueries.value.quiz,
       isAdmin: true,
     })
     // Filter out duplicates and append new quizzes
@@ -232,11 +246,82 @@ const handleScrollBottom = (type: 'file' | 'course' | 'lessons' | 'quiz') => {
   }
 }
 
-const handleCreate = async () => {
-  const formData = createBadgeFormData(badgeData.value)
+// Handle search queries - reset pagination and fetch with search (debounced)
+const handleSearch = debounce(
+  async (type: 'file' | 'course' | 'lessons' | 'quiz', query: string) => {
+    // Update search query
+    searchQueries.value[type] = query
 
+    // Reset pagination and clear existing data
+    switch (type) {
+      case 'file':
+        // Reset pagination - fetchFiles will replace the files list
+        await uploadFilesStore.fetchFiles({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'customFileName',
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'course':
+        courseStore.coursesCurrentPage = 0
+        courseStore.courses = []
+        await courseStore.fetchCourses({
+          page: 0,
+          perPage: 8,
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'lessons':
+        lessonsStore.page = 0
+        lessonsStore.lessons = []
+        await lessonsStore.fetchLessons({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'name',
+          search: query,
+          isAdmin: true,
+        })
+        break
+      case 'quiz':
+        quizStore.page = 0
+        quizStore.quizzes = []
+        await quizStore.fetchQuizzes({
+          page: 0,
+          perPage: 8,
+          order: 'asc',
+          orderColumn: 'title',
+          search: query,
+          isAdmin: true,
+        })
+        break
+    }
+  },
+  500,
+) // 500ms debounce delay
+
+const handleCreate = async () => {
   try {
-    await badgeAndSkillStore.addNewBadge(formData)
+    // Check if badge should be created
+    // Only create badge if at least one field is filled (name, image, or association)
+    const hasBadgeName = badgeData.value.name.trim() !== ''
+    const hasBadgeImage = badgeData.value.image.length > 0
+    const hasBadgeAssociation =
+      badgeData.value.associations.fileIds.length > 0 ||
+      badgeData.value.associations.courseIds.length > 0 ||
+      badgeData.value.associations.lessonIds.length > 0 ||
+      badgeData.value.associations.quizIds.length > 0
+
+    const shouldCreateBadge = hasBadgeName || hasBadgeImage || hasBadgeAssociation
+
+    if (shouldCreateBadge) {
+      const formData = createBadgeFormData(badgeData.value)
+      await badgeAndSkillStore.addNewBadge(formData)
+    }
 
     // Check if skill should be created
     // Only create skill if:
@@ -253,9 +338,14 @@ const handleCreate = async () => {
       await badgeAndSkillStore.addNewSkill(skillPayload)
     }
 
-    showSuccessScreen.value = true
+    if (shouldCreateBadge || (hasValidSkills && hasAssociation)) {
+      showSuccessScreen.value = true
+      return
+    }
+    handleCancel()
+    return
   } catch (error) {
-    console.error('Error creating badge:', error)
+    console.error('Error creating badge/skill:', error)
     // Handle error appropriately
   }
 }
@@ -339,6 +429,7 @@ onMounted(async () => {
           :association-options="associationOptions"
           @validation-change="handleBadgeValidationChange"
           @scroll-bottom="handleScrollBottom"
+          @search="handleSearch"
         />
 
         <!-- Skills Section -->
@@ -348,6 +439,7 @@ onMounted(async () => {
             :association-options="associationOptions"
             @validation-change="handleSkillsValidationChange"
             @scroll-bottom="handleScrollBottom"
+            @search="handleSearch"
           />
         </div>
       </div>

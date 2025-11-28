@@ -306,113 +306,73 @@ export const useUploadPopupStore = defineStore('uploadPopup', {
         }
 
         // Create upload promise for this file
-        const uploadPromise = uploadFilesService
-          .uploadFileStream(
-            file,
-            visibility,
-            status,
-            (progress) => {
-              // Update progress for this specific file
-              this.updateUploadProgress(uploadId, progress)
+        // New Presigned URL Flow
+        const uploadPromise = (async () => {
+          try {
+            // Step 1: Get Presigned URL
+            const payload = {
+              visibility,
+              status,
+            }
+            const { url } = await uploadFilesService.getPresignedUrl(
+              file.name,
+              file.type || 'application/octet-stream',
+              file.size,
+              payload,
+            )
 
-              // Calculate time remaining estimate
-              let statusMessage = 'Uploading...'
-              if (progress > 0 && progress < 100) {
-                const remaining = 100 - progress
-                if (remaining < 10) {
-                  statusMessage = 'Less than a minute left'
-                } else if (remaining < 30) {
-                  statusMessage = '1 min left...'
-                } else if (remaining < 60) {
-                  statusMessage = '2 min left...'
-                } else {
-                  statusMessage = 'Uploading...'
+            if (abortController.signal.aborted) throw new Error('Cancelled')
+
+            // Step 2: Upload to S3
+            await uploadFilesService.uploadToS3(
+              url,
+              file,
+              (progress) => {
+                // Update progress for this specific file
+                this.updateUploadProgress(uploadId, progress)
+
+                // Calculate time remaining estimate
+                let statusMessage = 'Uploading...'
+                if (progress > 0 && progress < 100) {
+                  const remaining = 100 - progress
+                  if (remaining < 10) {
+                    statusMessage = 'Less than a minute left'
+                  } else if (remaining < 30) {
+                    statusMessage = '1 min left...'
+                  } else if (remaining < 60) {
+                    statusMessage = '2 min left...'
+                  } else {
+                    statusMessage = 'Uploading...'
+                  }
                 }
-              }
 
-              this.updateUploadProgress(uploadId, progress, statusMessage)
+                this.updateUploadProgress(uploadId, progress, statusMessage)
 
-              // Call external progress callback if provided
-              if (onProgress) {
-                onProgress(fileIndex, progress, statusMessage)
-              }
-            },
-            undefined, // onProgressUpdate - not used currently
-            abortController.signal,
-          )
-          .then((response) => {
-            // Upload completed successfully
-            // Check if response status is 200 (even if there was a chunked encoding warning)
-            if (response?.status === 200 || response?.statusText === 'OK') {
-              this.completeUpload(uploadId)
-              return uploadId
-            } else {
-              // Unexpected status code
-              this.setUploadError(uploadId, 'Upload completed with unexpected status')
-              throw new Error('Upload completed with unexpected status')
-            }
-          })
-          .catch((error) => {
+                // Call external progress callback if provided
+                if (onProgress) {
+                  onProgress(fileIndex, progress, statusMessage)
+                }
+              },
+              abortController.signal,
+            )
+
+            if (abortController.signal.aborted) throw new Error('Cancelled')
+
+            this.completeUpload(uploadId)
+            return uploadId
+          } catch (error) {
+            console.log('error', error)
             // Check if it was cancelled
-            if (abortController.signal.aborted) {
+            if (abortController.signal.aborted || (error as Error).message === 'Cancelled') {
               this.cancelUpload(uploadId)
-              return Promise.reject(error)
+              throw error
             }
 
-            // Check if this is a chunked encoding or network error but upload might have succeeded
-            // This happens when server returns 200 but chunked encoding is incomplete or network error occurs
             const errorMessage = error instanceof Error ? error.message : String(error)
-            const errorCode = (error as { code?: string })?.code
-            const errorName = (error as { name?: string })?.name
-            const errorString = String(error)
-
-            // Check for chunked encoding errors in multiple places
-            const isChunkedEncodingError =
-              errorMessage.includes('ERR_INCOMPLETE_CHUNKED_ENCODING') ||
-              errorMessage.includes('chunked') ||
-              errorMessage.includes('CHUNKED_ENCODING') ||
-              errorCode === 'ERR_INCOMPLETE_CHUNKED_ENCODING' ||
-              errorName === 'ERR_INCOMPLETE_CHUNKED_ENCODING' ||
-              errorString.includes('ERR_INCOMPLETE_CHUNKED_ENCODING') ||
-              errorString.includes('chunked')
-
-            // Check for network errors - these often occur with chunked encoding issues
-            const isNetworkError =
-              errorMessage.includes('Network Error') ||
-              errorMessage === 'Network Error' ||
-              errorCode === 'ERR_NETWORK' ||
-              errorCode === 'ECONNABORTED' ||
-              errorName === 'NetworkError' ||
-              errorString.includes('Network Error')
-
-            // Check if progress reached 100% - if so, treat as success
-            const upload = this.uploads.find((u) => u.id === uploadId)
-
-            // If it's a chunked encoding or network error and progress reached 99%+, treat as success
-            if ((isChunkedEncodingError || isNetworkError) && upload && upload.progress >= 99) {
-              // Likely a successful upload with chunked encoding/network issue
-              // Mark as completed since progress reached 100%
-              this.completeUpload(uploadId)
-              return Promise.resolve(uploadId)
-            }
-
-            // Check if error response has 200 status (server says OK but client had parsing issue)
-            const responseStatus = (
-              error as { response?: { status?: number; statusText?: string } }
-            )?.response?.status
-            const responseStatusText = (
-              error as { response?: { status?: number; statusText?: string } }
-            )?.response?.statusText
-            if (responseStatus === 200 || responseStatusText === 'OK') {
-              // Server returned 200, treat as success
-              this.completeUpload(uploadId)
-              return Promise.resolve(uploadId)
-            }
-
-            // Real error - handle it
             this.setUploadError(uploadId, errorMessage)
-            return Promise.reject(error)
-          })
+            throw error
+          }
+        })()
 
         uploadPromises.push(uploadPromise)
       })

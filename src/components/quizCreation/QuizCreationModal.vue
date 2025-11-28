@@ -17,7 +17,6 @@ import type {
   QuizCategory,
 } from '@/types/QuizCreation'
 import type { QuizInfo } from '@/types/Quiz'
-import type { CourseParticipants } from '@/types/Course'
 import { QuizStatus } from '@/types/QuizPayload'
 import { PublishStatus } from '@/types/GlobalTypes'
 import { buildQuizFormData } from '@/utils/quizPayload'
@@ -213,6 +212,7 @@ const transformQuizInfoToFormData = (quizInfo: QuizInfo): void => {
     maxAttempts: quizInfo.maxAttempts.toString(),
     showFeedback: quizInfo.showFeedback,
     description: quizInfo.description,
+    visibility: quizInfo.visibility,
     image: attachment,
   }
 
@@ -273,11 +273,6 @@ const transformQuizInfoToFormData = (quizInfo: QuizInfo): void => {
   // Transform participants data
   // Map participants with their view data
   const transformedParticipants: ExistingParticipant[] = quizInfo.participants.map((p) => {
-    // Find the corresponding participant data from participantsView
-    const viewData: CourseParticipants | undefined = quizInfo.participantsView?.data?.find(
-      (v) => v.id === p.relatedId,
-    )
-
     // Convert relatedType to lowercase format expected by the component
     const type = p.relatedType.toLowerCase() as 'users' | 'groups' | 'stores' | 'clusters' | 'roles'
 
@@ -285,13 +280,12 @@ const transformQuizInfoToFormData = (quizInfo: QuizInfo): void => {
       index: p.order || 0,
       id: p.relatedId,
       type: type,
-      name: viewData?.firstName,
-      surname: viewData?.surname,
-      fullName: viewData?.fullName || undefined,
-      email: viewData?.email || undefined,
+      name: p.model?.name,
+      fullName: p.model?.name || undefined,
     }
   })
 
+  console.log('transformedParticipants: QuizCreationModal', transformedParticipants)
   existingParticipants.value = transformedParticipants
 
   // Increment key to force component re-render

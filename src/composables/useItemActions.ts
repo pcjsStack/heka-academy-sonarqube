@@ -20,6 +20,7 @@ export interface ItemActionsConfig {
   categoryId?: number
   onRefresh?: () => Promise<void>
   onNavigateBack?: () => void
+  getAssignations?: () => Assignation[] | undefined
 }
 
 export const useItemActions = (config: ItemActionsConfig = {}) => {
@@ -30,7 +31,7 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
   const uploadFilesStore = useUploadFilesStore()
   const quizStore = useQuizStore()
 
-  const { isAdmin = false, categoryId, onRefresh } = config
+  const { isAdmin = false, categoryId, onRefresh, getAssignations } = config
 
   // State
   const showDeleteModal = ref(false)
@@ -90,10 +91,11 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
         })
         break
       case CourseActionType.FILE_ASSET:
-        // Find the assignation from selectedCategoryDetail
-        const existingAssignation = categoryStore.selectedCategoryDetail?.assignations.find(
-          (a) => a.id === item.id,
-        )
+        // Find the assignation from assignations source
+        const assignations = getAssignations
+          ? getAssignations()
+          : categoryStore.selectedCategoryDetail?.assignations
+        const existingAssignation = assignations?.find((a) => a.id === item.id)
         if (existingAssignation) {
           const file = existingAssignation.model as Media
           if (file) {
@@ -155,9 +157,10 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
       await lessonsStore.fetchLessonById(selectedItemId.value as number, true)
     } else if (actionType === CourseActionType.FILE_ASSET) {
       selectedItemId.value = id
-      const existingAssignation = categoryStore.selectedCategoryDetail?.assignations.find(
-        (a) => a.relatedId === selectedItemId.value,
-      )
+      const assignations = getAssignations
+        ? getAssignations()
+        : categoryStore.selectedCategoryDetail?.assignations
+      const existingAssignation = assignations?.find((a) => a.relatedId === selectedItemId.value)
       if (existingAssignation) {
         const file = existingAssignation.model as Media
         if (file) {
@@ -174,13 +177,15 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
 
     selectedItemId.value = item.relatedId
     selectedItemType.value = item.actionType || null
-    selectedAssignation.value =
-      categoryStore.selectedCategoryDetail?.assignations.find((a) => a.id === item.id) || null
+    const assignations = getAssignations
+      ? getAssignations()
+      : categoryStore.selectedCategoryDetail?.assignations
+    selectedAssignation.value = assignations?.find((a) => a.id === item.id) || null
     showDeleteModal.value = true
   }
 
   // Confirm delete
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (refresh = true) => {
     if (!selectedItemId.value || !selectedItemType.value) return
 
     const actionType = selectedItemType.value as CourseActionType
@@ -217,7 +222,7 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
       selectedAssignation.value = null
 
       // Refresh data
-      if (onRefresh) {
+      if (onRefresh && refresh) {
         await onRefresh()
       } else if (categoryId) {
         await categoryStore.fetchCategoryDetail(categoryId)

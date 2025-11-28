@@ -74,7 +74,7 @@ const handleManage = (option?: string) => {
     if (props.isAdmin) {
       router.push({ name: 'admin-badges-skills' })
     } else {
-      router.push({ name: 'badges-skills' })
+      router.push({ name: 'admin-dashboard' })
     }
   }
 }

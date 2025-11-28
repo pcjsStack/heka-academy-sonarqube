@@ -14,6 +14,7 @@ import {
   BaseButton,
 } from '@/components/common'
 import AssociationDetailsExpanded from '@/components/courseCreation/steps/AssociationDetailsExpanded.vue'
+import { CourseCreationModal } from '@/components/courseCreation'
 import { CreateLessonModal } from '@/components/lessonCreation'
 import { QuizCreationModal } from '@/components/quizCreation'
 import FileViewerModal from '@/components/modal/FileViewerModal.vue'
@@ -25,7 +26,7 @@ import LessonsService from '@/services/lessons'
 import QuizzesService from '@/services/quiz'
 import CategoryService from '@/services/category'
 import { uploadFilesService } from '@/services/uploadFiles'
-import type { CourseItem } from '@/types/Course'
+import type { CourseItem, CourseDetails } from '@/types/Course'
 import type { Lesson } from '@/types/Lessons'
 import { CourseExecutionType } from '@/types/Course'
 import { useCourseStore } from '@/stores/courseStore'
@@ -33,6 +34,7 @@ import { useLessonsStore } from '@/stores/lessonsStore'
 import { useQuizStore } from '@/stores/QuizStore'
 import type { LessonDetails } from '@/types/Lessons'
 import type { QuizInfo } from '@/types/Quiz'
+import { AddCategoryModal } from '@/components/courseManagement'
 
 interface Props {
   uploadedFiles?: Media[]
@@ -115,10 +117,14 @@ const courseStore = useCourseStore()
 const router = useRouter()
 
 // Modal states for editing
+const showCourseEditModal = ref(false)
 const showLessonEditModal = ref(false)
 const showQuizEditModal = ref(false)
+const showCategoryEditModal = ref(false)
+const editCourseData = ref<CourseDetails | null>(null)
 const editLessonData = ref<LessonDetails | null>(null)
 const editQuizData = ref<QuizInfo | null>(null)
+const editingCategoryId = ref<number | null>(null)
 
 // Confirmation modal state
 const showConfirmModal = ref(false)
@@ -233,8 +239,11 @@ const loadCategories = async (reset = false) => {
     })
     const items = Array.isArray(res?.data) ? res.data : res?.data?.content || []
     const leftIds = new Set(leftItems.value.map((item) => item.id))
-    // Filter out items that are already in leftItems
-    const newItems = items.map(mapCategory).filter((item: AssociationItem) => !leftIds.has(item.id))
+    // Filter out items that are already in leftItems and exclude current category
+    const newItems = items
+      .filter((item: CategoryApiItem) => item.id.toString() !== String(props.categoryId))
+      .map(mapCategory)
+      .filter((item: AssociationItem) => !leftIds.has(item.id))
     rightCategories.value = reset ? newItems : [...rightCategories.value, ...newItems]
     pages.value.categories = next + 1
     hasMore.value.categories = items.length >= 10
@@ -744,17 +753,20 @@ const showNoDataMessage = computed(() => {
   }
 })
 
-const onRightScroll = async (e: Event) => {
-  const target = e.target as HTMLElement
-  if (!target) return
-  const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 80
-  if (!nearBottom) return
-  if (associationTab.value === 'categories') await loadCategories(false)
-  if (associationTab.value === 'courses') await loadCourses(false)
-  if (associationTab.value === 'lessons') await loadLessons(false)
-  if (associationTab.value === 'files') await loadFiles(false)
-  if (associationTab.value === 'quizzes') await loadQuizzes(false)
+// Handle load more button click
+const handleLoadMore = async () => {
+  if (associationTab.value === 'categories') await loadCategories()
+  if (associationTab.value === 'courses') await loadCourses()
+  if (associationTab.value === 'lessons') await loadLessons()
+  if (associationTab.value === 'files') await loadFiles()
+  if (associationTab.value === 'quizzes') await loadQuizzes()
 }
+
+// Check if load more button should be shown
+const showLoadMoreButton = computed(() => {
+  const currentTab = associationTab.value
+  return hasMore.value[currentTab] && !isLoading.value[currentTab] && rightList.value.length > 0
+})
 
 // Toggle expand/collapse for an item (accordion behavior - only one at a time)
 const toggleExpanded = async (
@@ -825,7 +837,7 @@ const isExpanded = (itemId: string | number) => {
 const handleEdit = async (
   itemId: string | number,
   itemTitle: string,
-  itemType: 'course' | 'lesson' | 'quiz',
+  itemType: 'category' | 'course' | 'lesson' | 'quiz',
 ) => {
   const confirmed = window.confirm(t('pages.course.associations.details.confirmEdit'))
   if (!confirmed) return
@@ -833,7 +845,16 @@ const handleEdit = async (
   try {
     const id = Number(itemId)
 
-    if (itemType === 'lesson') {
+    if (itemType === 'category') {
+      // Open category edit modal
+      editingCategoryId.value = id
+      showCategoryEditModal.value = true
+    } else if (itemType === 'course') {
+      // Fetch course details and open course edit modal
+      await courseStore.fetchCourseById(id, true)
+      editCourseData.value = courseStore.courseDetails
+      showCourseEditModal.value = true
+    } else if (itemType === 'lesson') {
       // Fetch lesson details and open lesson edit modal
       await lessonsStore.fetchLessonById(id, true)
       editLessonData.value = lessonsStore.lessonDetails
@@ -849,7 +870,18 @@ const handleEdit = async (
   }
 }
 
+// Handle category edit modal close
+const handleCloseCategoryEditModal = () => {
+  showCategoryEditModal.value = false
+  editingCategoryId.value = null
+}
+
 // Handle modal close events
+const handleCloseCourseModal = () => {
+  showCourseEditModal.value = false
+  editCourseData.value = null
+}
+
 const handleCloseLessonModal = () => {
   // Clear the edit lesson data first to trigger cleanup
   editLessonData.value = null
@@ -943,7 +975,7 @@ const handleConfirmView = () => {
   } else if (item.type === 'quiz') {
     router.push(`/admin/quiz/${item.id}`)
   } else if (item.type === 'category') {
-    router.push(`/category/${item.id}`)
+    router.push(`/admin/category/${item.id}`)
   }
 
   pendingViewItem.value = null
@@ -1112,13 +1144,17 @@ defineExpose({
                   @onClick="() => moveItemDown(index)"
                 />
                 <BaseButtonIcon
-                  v-if="element.type === 'lesson' || element.type === 'quiz'"
+                  v-if="
+                    element.type === 'course' ||
+                    element.type === 'lesson' ||
+                    element.type === 'quiz'
+                  "
                   icon="edit"
                   color="neutral"
                   variant="outline-light"
                   size="xs"
                   :disabled="
-                    element.type === 'lesson' &&
+                    (element.type === 'lesson' || element.type === 'course') &&
                     !(
                       element.visibility === 'maintenance' ||
                       element.visibility === 'hide' ||
@@ -1126,7 +1162,12 @@ defineExpose({
                     )
                   "
                   @onClick="
-                    () => handleEdit(element.id, element.title, element.type as 'lesson' | 'quiz')
+                    () =>
+                      handleEdit(
+                        element.id,
+                        element.title,
+                        element.type as 'course' | 'lesson' | 'quiz',
+                      )
                   "
                 />
                 <BaseButtonIcon
@@ -1159,7 +1200,6 @@ defineExpose({
       <!-- Right: Association content area -->
       <div
         class="lg:col-span-1 lg:border-l lg:border-neutral-200 lg:pl-5 pt-4 h-full overflow-y-auto no-scrollbar"
-        @scroll.passive="onRightScroll"
       >
         <div class="space-y-3">
           <VueDraggable v-model="rightList" :group="rightGroup" class="space-y-3">
@@ -1169,7 +1209,7 @@ defineExpose({
                 v-if="element.type === 'category'"
                 class="bg-white rounded-lg p-4 min-h-[56px] flex items-center justify-between border border-neutral-200"
               >
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                   <BaseButtonIcon
                     icon="arrow-move"
                     color="neutral"
@@ -1178,27 +1218,49 @@ defineExpose({
                     noButton
                   />
                   <div
-                    class="w-8 h-8 rounded-lg flex items-center justify-center"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                     :class="element.iconBg"
                   >
                     <BaseIcon :name="element.iconName" size="sm" :color="element.iconColor" />
                   </div>
-                  <BaseText :text="element.title || '-'" type="p-sm" :tone="900" color="neutral" />
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <BaseText
+                      :text="element.title || '-'"
+                      type="p-sm"
+                      :tone="900"
+                      color="neutral"
+                      class="truncate"
+                    />
+                    <!-- Status Badges -->
+                    <BaseText
+                      v-if="element.visibility === 'maintenance'"
+                      :text="'Maintenance'"
+                      type="p-xs"
+                      class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex-shrink-0"
+                    />
+                    <BaseText
+                      v-if="element.visibility === 'hide' || element.visibility === 'hidden'"
+                      :text="'Hidden'"
+                      type="p-xs"
+                      class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 flex-shrink-0"
+                    />
+                  </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-shrink-0">
                   <BaseButtonIcon
-                    :icon="element.isVisible ? 'eye' : 'eye-off'"
+                    icon="eye"
                     color="neutral"
                     variant="outline-light"
                     size="xs"
-                    @onClick="() => console.log('Toggle visibility for category:', element.id)"
+                    @onClick="() => handleView(element)"
                   />
                   <BaseButtonIcon
                     icon="edit"
                     color="neutral"
                     variant="outline-light"
                     size="xs"
-                    @onClick="() => console.log('Edit category:', element.id, element.title)"
+                    :disabled="element.visibility === 'show'"
+                    @onClick="() => handleEdit(element.id, element.title, 'category')"
                   />
                 </div>
               </div>
@@ -1278,17 +1340,20 @@ defineExpose({
                     variant="outline-light"
                     size="xs"
                     :disabled="
-                      element.type === 'lesson' ||
-                      element.type === 'quiz' ||
-                      (element.type === 'course' &&
-                        !(
-                          element.visibility === 'maintenance' ||
-                          element.visibility === 'hide' ||
-                          element.visibility === 'hidden'
-                        ))
+                      (element.type === 'lesson' || element.type === 'course') &&
+                      !(
+                        element.visibility === 'maintenance' ||
+                        element.visibility === 'hide' ||
+                        element.visibility === 'hidden'
+                      )
                     "
                     @onClick="
-                      () => handleEdit(element.id, element.title, element.type as 'lesson' | 'quiz')
+                      () =>
+                        handleEdit(
+                          element.id,
+                          element.title,
+                          element.type as 'course' | 'lesson' | 'quiz',
+                        )
                     "
                   />
                 </div>
@@ -1325,10 +1390,29 @@ defineExpose({
               <BaseText :text="notFoundMessage" :tone="500" color="neutral" type="p-sm" />
             </div>
           </div>
+
+          <!-- Load More Button -->
+          <div v-if="showLoadMoreButton" class="py-4 flex justify-center">
+            <BaseButton
+              :text="t('pages.course.associations.loadMore')"
+              variant="outline"
+              color="primary"
+              size="sm"
+              :disabled="isCurrentTabLoading"
+              @onClick="handleLoadMore"
+              class="!font-medium"
+            />
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- Edit Modals -->
+    <CourseCreationModal
+      v-if="showCourseEditModal && editCourseData"
+      :edit-course="editCourseData"
+      @close="handleCloseCourseModal"
+    />
     <CreateLessonModal
       v-if="showLessonEditModal"
       :show="showLessonEditModal"
@@ -1384,6 +1468,15 @@ defineExpose({
       :isOpen="showFileViewer"
       :file="selectedFile"
       @close="handleFileViewerClose"
+    />
+
+    <!-- Category Edit Modal -->
+    <AddCategoryModal
+      v-if="showCategoryEditModal"
+      :show="showCategoryEditModal"
+      :category-id="editingCategoryId"
+      :is-dashboard="false"
+      @close="handleCloseCategoryEditModal"
     />
   </div>
 </template>

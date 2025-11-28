@@ -111,25 +111,6 @@
           </div>
         </div>
       </div>
-
-      <CourseCompletedModal
-        v-if="showCourseCompletedModal"
-        :user-name="userName"
-        :user-profile-image="userProfileImage"
-        :position="userPosition"
-        :points="userPoints"
-        @close="handleCloseCourseCompletedModal"
-        @return-home="handleReturnHome"
-        @see-leaderboard="handleSeeLeaderboard"
-      />
-
-      <!-- <QuizModal :show="showQuizModal" @close="handleCloseQuizModal" @submit="handleQuizSubmit" /> -->
-
-      <CourseLeaderboardModal
-        v-if="showLeaderboardModal"
-        @close="handleCloseLeaderboard"
-        @return-home="handleLeaderboardReturnHome"
-      />
     </div>
 
     <CourseCompletedModal
@@ -145,6 +126,7 @@
 
     <CourseLeaderboardModal
       v-if="showLeaderboardModal"
+      :course-id="route.params.id as unknown as number"
       @close="handleCloseLeaderboard"
       @return-home="handleLeaderboardReturnHome"
     />
@@ -154,47 +136,6 @@
       :file="currentFile"
       @close="handleCloseFileViewer"
     />
-    <BasePopupModal
-      v-if="showPopupModal"
-      :title="t('pages.course.completed.title')"
-      size="md"
-      :close-button="true"
-      :is-header="true"
-      @on-close="handleClosePopupModal"
-    >
-      <div class="flex flex-col items-center px-6 py-8">
-        <div class="mb-6">
-          <div class="relative">
-            <div class="flex items-center justify-center">
-              <img
-                :src="success"
-                alt="Success"
-                class="mx-auto w-[96px] h-[96px] sm:mb-[40px] mb-[22px]"
-              />
-            </div>
-          </div>
-        </div>
-
-        <BaseText
-          :text="t('pages.course.completed.message')"
-          color="neutral"
-          :tone="600"
-          font="regular"
-          type="p-md"
-          class="text-center mb-8 leading-relaxed"
-        />
-
-        <!-- Done Button -->
-        <BaseButton
-          :text="t('pages.course.publishSuccess.done')"
-          color="primary"
-          variant="default"
-          size="md"
-          @click="handleClosePopupModal"
-          class="px-8"
-        />
-      </div>
-    </BasePopupModal>
   </div>
 </template>
 
@@ -205,10 +146,8 @@ import Popper from 'vue3-popper'
 import {
   BaseText,
   BaseCourseItemCard,
-  BaseButton,
   BaseTimer,
   BaseCircularProgress,
-  BasePopupModal,
   PermissionDenied,
 } from '@/components/common'
 import FileViewerModal from '@/components/modal/FileViewerModal.vue'
@@ -217,7 +156,6 @@ import CourseCompletedModal from '@/components/modal/CourseCompletedModal.vue'
 import { CourseLeaderboardModal } from '@/components/leaderboard'
 import { useCourseStore } from '@/stores/courseStore'
 import TimerService from '@/services/timerService'
-import success from '@/assets/gif/success.gif'
 import { t } from '@/utils/i18n'
 import type {
   CourseAssignations,
@@ -231,6 +169,7 @@ import {
   CourseExecutionType,
   VisibilityStatus,
 } from '@/types/Course'
+import { ExecutionStatus } from '@/types/GlobalTypes'
 import jennyImg from '@/assets/users/Jenny.png'
 import type { Assignation } from '@/types/Lessons'
 import type { Media } from '@/types/Media'
@@ -240,6 +179,16 @@ import { getContentTypeFromFile } from '@/utils/utils'
 const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
+
+// Props
+interface Props {
+  isAdmin?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isAdmin: false,
+})
+
 // State
 const overallProgress = computed(() => {
   return courseStore.courseDetails?.execution?.percentage || 0
@@ -261,7 +210,6 @@ const currentFile = ref<Media | null>(null)
 const timerRef = ref<InstanceType<typeof BaseTimer> | null>(null)
 const isTimerStopped = ref(true) // Timer starts as stopped until it's started
 const timerDetails = ref<TimerItem | null>(null)
-const showPopupModal = ref(false)
 const isInitializingTimer = ref(false) // Flag to prevent API calls during initialization
 const isInitialLoad = ref(true) // Flag to track initial load
 
@@ -395,18 +343,29 @@ watch(
 // Course items data - different file types
 const courseItems = computed(() => {
   return (
-    courseStore.courseDetails?.assignations.map((assignation) => ({
-      id: assignation.id,
-      title:
-        assignation.relatedType === CourseActionType.FILE_ASSET
-          ? assignation.model.fileName || ''
-          : assignation.model.name || '',
-      contentType: getContentType(assignation),
-      status: (assignation.model.status === 'published' ? 'done' : 'todo') as 'done' | 'todo',
-      actionType: assignation.relatedType as CourseActionType | undefined,
-      visibility: assignation.model.visibility as VisibilityStatus,
-      percentage: assignation.execution?.percentage || 0,
-    })) || []
+    courseStore.courseDetails?.assignations.map((assignation) => {
+      let title = ''
+      if (assignation.relatedType === CourseActionType.FILE_ASSET) {
+        title =
+          (assignation.model as Media).customFileName ||
+          (assignation.model as Media).fileName ||
+          'Untitled File'
+      } else if (assignation.relatedType === CourseActionType.QUIZ) {
+        // Quiz uses 'title' field instead of 'name'
+        title = (assignation.model as { title?: string }).title || ''
+      } else {
+        title = (assignation.model as { name?: string }).name || 'Untitled'
+      }
+      return {
+        id: assignation.id,
+        title,
+        contentType: getContentType(assignation),
+        status: (assignation.model.status === 'published' ? 'done' : 'todo') as 'done' | 'todo',
+        actionType: assignation.relatedType as CourseActionType | undefined,
+        visibility: assignation.model.visibility as VisibilityStatus,
+        percentage: assignation.execution?.percentage || 0,
+      }
+    }) || []
   )
 })
 
@@ -664,18 +623,27 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
-const handleClosePopupModal = () => {
-  showPopupModal.value = false
-}
+// Watch for course completion
+watch(
+  () => courseStore.courseDetails?.execution?.status,
+  async (newStatus) => {
+    if (!props.isAdmin && newStatus === ExecutionStatus.COMPLETED) {
+      if (!isTimerStopped.value && timerDetails.value?.running) {
+        await handleTimerStop(false) // programmatic call
+      }
+      showCourseCompletedModal.value = true
+    }
+  },
+)
 
 watch(overallProgress, async (newVal) => {
   if (newVal === 100) {
     if (!isTimerStopped.value && timerDetails.value?.running) {
       await handleTimerStop(false) // programmatic call
     }
-    // Only show popup if this is not the initial load
-    if (!isInitialLoad.value) {
-      showPopupModal.value = true
+    // Only show popup if this is not the initial load and user is admin
+    if (!isInitialLoad.value && props.isAdmin) {
+      showCourseCompletedModal.value = true
     }
   }
 })

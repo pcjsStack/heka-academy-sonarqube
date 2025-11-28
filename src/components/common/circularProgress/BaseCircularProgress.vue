@@ -47,12 +47,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { PrimaryColors } from '@/types/Styles'
 
 interface BaseCircularProgressProps {
   value: number
   max?: number
   size?: 'sm' | 'md' | 'lg'
-  color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'
+  color?: PrimaryColors
   label?: string
 }
 

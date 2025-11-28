@@ -14,6 +14,8 @@ import { t } from '@/utils/i18n'
 import type { Media } from '@/types/Media'
 import type { QuizSettingsData, StepValidationState, QuizStepExpose } from '@/types/QuizCreation'
 import { getFileUrl, getFileType, fileSizeConvert } from '@/utils/generalUtils'
+import { VisibilityStatus } from '@/types/Course'
+import { visibilityOptions } from '@/utils/defaultOption'
 
 const emit = defineEmits<{
   'validation-changed': []
@@ -22,6 +24,7 @@ const emit = defineEmits<{
 // Form data
 const quizTitle = ref<string>('')
 const quizLanguage = ref<string>('')
+const quizVisibility = ref<string>(VisibilityStatus.SHOW)
 const maxAttempts = ref<number>(0)
 const showFeedback = ref<boolean>(false)
 const description = ref<string>('')
@@ -111,6 +114,7 @@ defineExpose<QuizStepExpose>({
     return {
       title: quizTitle.value,
       language: quizLanguage.value,
+      visibility: quizVisibility.value,
       maxAttempts: maxAttempts.value.toString(),
       showFeedback: showFeedback.value,
       description: description.value,
@@ -122,6 +126,7 @@ defineExpose<QuizStepExpose>({
     if (!vals) return
     if (vals.title !== undefined) quizTitle.value = vals.title
     if (vals.language !== undefined) quizLanguage.value = vals.language
+    if (vals.visibility !== undefined) quizVisibility.value = vals.visibility
     if (vals.maxAttempts !== undefined) {
       const attempts = parseInt(vals.maxAttempts)
       maxAttempts.value = isNaN(attempts) || attempts < 0 ? 0 : attempts
@@ -234,6 +239,14 @@ defineExpose<QuizStepExpose>({
           required
         />
       </div>
+
+      <!-- Quiz Visibility -->
+      <BaseSelect
+        v-model="quizVisibility"
+        :label="t('pages.course.settings.general.visibility')"
+        :placeholder="t('pages.course.settings.general.visibilityPlaceholder')"
+        :options="visibilityOptions"
+      />
 
       <!-- Max Attempts -->
       <BaseInput

@@ -148,7 +148,7 @@ const handleEdit = async () => {
         v-model="selectedVisibility"
         :options="visibilityOptions"
         :placeholder="t('pages.course.settings.general.visibilityPlaceholder')"
-        :label="t('pages.course.settings.general.visibility')"
+        :label="t('pages.course.settings.general.type.visibility', { type: type })"
         class="w-full"
       />
     </div>

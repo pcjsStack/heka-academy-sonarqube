@@ -193,6 +193,7 @@ onUnmounted(() => {
             />
           </template>
           <BaseButton
+            v-if="isAdmin"
             text="Trophy"
             hideText
             leftIcon="trophy"

@@ -36,12 +36,6 @@
         @click="toggleDropdown"
       >
         <template v-if="multiple">
-          <span
-            v-if="selectedValues.length === 0 && placeholder"
-            class="text-[14px] text-neutral-500 tracking-[-0.01em] leading-tight"
-          >
-            {{ placeholder }}
-          </span>
           <div
             v-for="selectedValue in selectedValues"
             :key="selectedValue"
@@ -63,6 +57,29 @@
               <BaseIcon name="clear" class="w-auto text-white h-3" />
             </button>
           </div>
+          <!-- Search input for multiple select when searchable -->
+          <input
+            v-if="searchable && showDropdown"
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            class="flex-1 min-w-[120px] outline-none bg-transparent text-[14px] text-neutral-900 tracking-[-0.01em] leading-tight"
+            :placeholder="selectedValues.length === 0 ? placeholder : ''"
+            @click.stop
+            @keydown="handleKeyDown"
+          />
+          <span
+            v-else-if="selectedValues.length === 0 && placeholder && !searchable"
+            class="text-[14px] text-neutral-500 tracking-[-0.01em] leading-tight"
+          >
+            {{ placeholder }}
+          </span>
+          <span
+            v-else-if="selectedValues.length === 0 && placeholder && searchable && !showDropdown"
+            class="text-[14px] text-neutral-500 tracking-[-0.01em] leading-tight"
+          >
+            {{ placeholder }}
+          </span>
         </template>
 
         <template v-else>
@@ -167,7 +184,7 @@
 
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { BaseTooltipIcon as BaseTooltipIcons, BaseIcon, BaseText } from '@/components/common'
 import type { Icons, PrimaryColors } from '@/types/Styles'
 import { onClickOutside } from '@vueuse/core'
@@ -186,6 +203,7 @@ const emit = defineEmits([
   'onChange',
   'onBlur',
   'scroll-bottom',
+  'on-search',
 ])
 
 const props = withDefaults(
@@ -253,6 +271,13 @@ const selectedLabel = computed(() => {
 })
 
 const filteredOptions = computed(() => {
+  // For server-side search, don't filter locally - return all options
+  // The parent component will handle filtering via API
+  if (props.searchable && props.multiple) {
+    // Server-side search mode - emit search query and return all options
+    return props.options
+  }
+  // Client-side search for single select
   if (!searchQuery.value) return props.options
   return props.options.filter((option) =>
     option.label.toLowerCase().includes(searchQuery.value.toLowerCase()),
@@ -334,8 +359,16 @@ const toggleDropdown = () => {
   }
 
   showDropdown.value = !showDropdown.value
-  if (showDropdown.value && props.searchable && searchInput.value) {
-    searchInput.value.focus()
+  if (showDropdown.value && props.searchable) {
+    // Focus search input after dropdown is shown (for both single and multiple)
+    setTimeout(() => {
+      if (searchInput.value) {
+        searchInput.value.focus()
+      }
+    }, 0)
+  } else if (!showDropdown.value) {
+    // Clear search when closing dropdown
+    searchQuery.value = ''
   }
 }
 
@@ -363,6 +396,17 @@ const handleKeyDown = (event: KeyboardEvent) => {
     toggleSelection(filteredOptions.value[0]?.value)
   }
 }
+
+// Watch search query for server-side search (multiple mode)
+watch(
+  () => searchQuery.value,
+  (newQuery: string) => {
+    if (props.searchable && props.multiple) {
+      // Emit search event for server-side filtering
+      emit('on-search', newQuery)
+    }
+  },
+)
 
 onClickOutside(selectContainer, () => {
   showDropdown.value = false

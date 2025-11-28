@@ -200,7 +200,7 @@ const handleCreate = async () => {
 
 const handleSuccessModalClose = async () => {
   courseStore.clearCourseDetails()
-  await courseStore.fetchCourses({ isAdmin: true })
+  await courseStore.fetchCourses({ page: 0, perPage: 12, isAdmin: true })
   showSuccessModal.value = false
   emit('close')
 }

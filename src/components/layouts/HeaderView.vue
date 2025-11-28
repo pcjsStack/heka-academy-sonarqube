@@ -17,6 +17,7 @@ const props = withDefaults(
     isPerformance?: boolean
     isShowFilter?: boolean
     hasActiveFilters?: boolean
+    searchClear?: boolean
     searchText?: string
   }>(),
   {
@@ -30,6 +31,7 @@ const props = withDefaults(
     isPerformance: false,
     hasActiveFilters: false,
     isShowFilter: false,
+    searchClear: false,
     searchText: '',
   },
 )
@@ -144,6 +146,7 @@ watch(
           icon-name-left="search"
           tailwind-css="pl-10 py-2.5 rounded-lg text-sm text-grey-600 leading-5 font-normal"
           class="w-full lg:!w-[260px]"
+          :clearable="searchClear"
           v-model="searchInputValue"
           @onInput="(event: Event) => $emit('inputChange', event)"
         />

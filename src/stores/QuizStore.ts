@@ -85,7 +85,8 @@ export const useQuizStore = defineStore('quiz', {
         const response = await quizService.getQuizById(quizId, isAdmin)
         this.quizInfo = response
         // Check if timerId is missing and create/update it
-        if (!response.execution?.timerId && !isAdmin) {
+        if (!response.execution?.timerId && !isAdmin && response.status !== PublishStatus.DRAFT) {
+          console.log('response.status', response.status)
           const timer = await TimerService.createTimer()
           await TimerService.startTimer(timer.data.id)
           await CourseService.startExecution({
@@ -178,6 +179,7 @@ export const useQuizStore = defineStore('quiz', {
         id: String(quiz.id),
         imageUrl: quiz.imageUrl || '',
         status: quiz.status === PublishStatus.PUBLISHED ? 'Published' : 'Draft',
+        visibility: quiz.visibility,
       })),
     getTotal: (state) => state.total,
     getPage: (state) => state.page,

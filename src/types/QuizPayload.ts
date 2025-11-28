@@ -56,6 +56,7 @@ export interface QuizParticipantPayload {
 export interface QuizCreatePayload {
   title: string
   language: string
+  visibility: string
   maxAttempts: number
   description: string
   showFeedback: boolean

@@ -4,11 +4,14 @@ import { useRouter } from 'vue-router'
 import { BaseButton, BaseText, BaseIcon } from '@/components/common'
 import ThreeDotMenu from '@/components/ThreeDotMenu.vue'
 import BaseDeleteModal from '@/components/BaseDeleteModal.vue'
+import ProgressTable from '@/components/progress/ProgressTable.vue'
 import { QuizExecutionStatus, QuizStatusBadge } from '@/components/quiz'
 import { QuizCreationModal } from '@/components/quizCreation'
+import { CourseVisibilityChangeModal } from '@/components/courseManagement'
 import { useQuizStore } from '@/stores/QuizStore'
 import type { MenuItem } from '@/components/ThreeDotMenu.vue'
 import type { quizItem } from '@/types/Quiz'
+import { CourseExecutionType, VisibilityStatus, VisibilityType } from '@/types/Course'
 import { t } from '@/utils/i18n'
 import ThumbnailImage from '@/assets/images/thumbnail-image.png'
 
@@ -26,6 +29,9 @@ const showDeleteModal = ref(false)
 const selectedQuizId = ref<number | null>(null)
 const showQuizCreationModal = ref(false)
 const editingQuizId = ref<number | null>(null)
+const showProgressTable = ref(false)
+const selectedQuizVisibility = ref<VisibilityStatus | null>(null)
+const showVisibilityChangeModal = ref(false)
 
 onMounted(async () => {
   await quizStore.fetchQuizzes({
@@ -80,24 +86,23 @@ const handleCloseQuizCreationModal = async () => {
   })
 }
 
-const getMenuItems = (quizId: number): MenuItem[] => {
+const getMenuItems = (quizId: number, visibility: VisibilityStatus): MenuItem[] => {
   const quiz = quizStore.getQuizzesList.find((quiz) => quiz.id === quizId.toString())
   const isDraft = quiz?.status === 'Draft'
-
-  // Disable edit and delete if not in Draft status
-  const isDisabled = !isDraft
+  const isMaintenance = visibility === VisibilityStatus.MAINTENANCE
+  const isDisabled = !isDraft && !isMaintenance
   const disabledTooltip = isDisabled ? t('pages.quiz.buttons.cannotDeleteNotDraft') : undefined
 
   return [
     {
       label: t('pages.common.progress'),
       icon: 'eye',
-      action: () => console.log('Progress clicked for quiz:', quizId),
+      action: () => handleProgressQuiz(quizId),
     },
     {
       label: t('pages.common.edit'),
       icon: 'edit',
-      action: () => handleEditQuiz(quizId),
+      action: () => handleEditQuiz(quizId, visibility),
     },
     {
       label: t('pages.common.delete'),
@@ -110,9 +115,18 @@ const getMenuItems = (quizId: number): MenuItem[] => {
   ]
 }
 
-const handleEditQuiz = (quizId: number) => {
+const handleEditQuiz = (quizId: number, visibility: VisibilityStatus) => {
+  if (!props.isAdmin) {
+    return
+  }
+  if (visibility === VisibilityStatus.MAINTENANCE || visibility === VisibilityStatus.HIDE) {
+    editingQuizId.value = quizId
+    showQuizCreationModal.value = true
+    return
+  }
+  selectedQuizVisibility.value = visibility
   editingQuizId.value = quizId
-  showQuizCreationModal.value = true
+  showVisibilityChangeModal.value = true
 }
 
 const handleQuizClick = (quizId: number) => {
@@ -134,6 +148,41 @@ const shouldShowExecutionStatus = (quiz: QuizFromGetter): boolean => {
 }
 
 const hasNoQuizzes = computed(() => quizStore.getQuizzesList.length === 0)
+
+const handleProgressQuiz = (quizId: number) => {
+  selectedQuizId.value = quizId
+  showProgressTable.value = true
+}
+
+const handleCloseProgressTable = () => {
+  showProgressTable.value = false
+  selectedQuizId.value = null
+}
+
+const handleVisibilityChangeSave = async () => {
+  showVisibilityChangeModal.value = false
+  editingQuizId.value = null
+  selectedQuizVisibility.value = null
+  await quizStore.fetchQuizzes({
+    page: 0,
+    perPage: 8,
+    order: 'asc',
+    orderColumn: 'title',
+    isAdmin: props.isAdmin,
+  })
+}
+
+const handleVisibilityChangeEdit = async () => {
+  showQuizCreationModal.value = true
+  showVisibilityChangeModal.value = false
+  selectedQuizVisibility.value = null
+}
+
+const handleVisibilityChangeClose = () => {
+  showVisibilityChangeModal.value = false
+  editingQuizId.value = null
+  selectedQuizVisibility.value = null
+}
 </script>
 
 <template>
@@ -195,6 +244,32 @@ const hasNoQuizzes = computed(() => quizStore.getQuizzesList.length === 0)
               >
                 {{ quiz.title }}
               </h3>
+              <div
+                v-if="quiz.visibility === VisibilityStatus.MAINTENANCE"
+                class="inline-flex items-center rounded-[8px] px-2 py-1 bg-warning-400 gap-1.5 flex-shrink-0"
+              >
+                <BaseIcon name="pause" size="xs" color="white" />
+                <BaseText
+                  :text="t('pages.category.status.maintenance')"
+                  type="p-xs"
+                  color="white"
+                  font="semibold"
+                  class="!text-[11px] md:!text-[10px] lg:!text-[11px] !leading-[13px]"
+                />
+              </div>
+              <div
+                v-if="quiz.visibility === VisibilityStatus.HIDE"
+                class="inline-flex items-center rounded-[8px] px-2 py-1 bg-warning-400 gap-1.5 flex-shrink-0"
+              >
+                <BaseIcon name="eye-off" size="xs" color="white" />
+                <BaseText
+                  :text="t('pages.category.status.hide')"
+                  type="p-xs"
+                  color="white"
+                  font="semibold"
+                  class="!text-[11px] md:!text-[10px] lg:!text-[11px] !leading-[13px]"
+                />
+              </div>
               <!-- Admin Status Badge with Date Logic -->
               <QuizStatusBadge
                 v-if="isAdmin"
@@ -224,7 +299,10 @@ const hasNoQuizzes = computed(() => quizStore.getQuizzesList.length === 0)
                 :show-percentage-circle="true"
               />
               <!-- Three Dot Menu for admin -->
-              <ThreeDotMenu v-if="isAdmin" :items="getMenuItems(Number(quiz.id))" />
+              <ThreeDotMenu
+                v-if="isAdmin"
+                :items="getMenuItems(Number(quiz.id), quiz.visibility)"
+              />
             </div>
           </div>
         </div>
@@ -248,6 +326,14 @@ const hasNoQuizzes = computed(() => quizStore.getQuizzesList.length === 0)
     @onDelete="handleConfirmDelete"
   />
 
+  <ProgressTable
+    v-if="showProgressTable"
+    :isOpen="showProgressTable"
+    @onClose="handleCloseProgressTable"
+    :id="selectedQuizId as number"
+    :type="CourseExecutionType.QUIZ"
+  />
+
   <QuizCreationModal
     v-if="showQuizCreationModal"
     :show="showQuizCreationModal"
@@ -255,5 +341,15 @@ const hasNoQuizzes = computed(() => quizStore.getQuizzesList.length === 0)
     :isDashboard="true"
     :isAdmin="isAdmin"
     @close="handleCloseQuizCreationModal"
+  />
+  <CourseVisibilityChangeModal
+    v-if="showVisibilityChangeModal && isAdmin && editingQuizId"
+    :isOpen="showVisibilityChangeModal"
+    :itemId="editingQuizId as number"
+    :currentVisibility="selectedQuizVisibility as VisibilityStatus"
+    @onClose="handleVisibilityChangeClose"
+    @onSave="handleVisibilityChangeSave"
+    :type="VisibilityType.QUIZ"
+    @onEdit="handleVisibilityChangeEdit"
   />
 </template>
