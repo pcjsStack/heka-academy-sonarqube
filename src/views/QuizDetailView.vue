@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { BaseButton, BaseIcon, BaseText, BaseTimer } from '@/components/common'
+import { BaseButton, BaseIcon, BaseText, BaseTimer, PermissionDenied } from '@/components/common'
 import ActionButtonWithTooltip from '@/components/common/ActionButtonWithTooltip.vue'
+import ProgressTable from '@/components/progress/ProgressTable.vue'
 import { QuizCreationModal } from '@/components/quizCreation'
+import { CourseVisibilityChangeModal } from '@/components/courseManagement'
 import BaseDeleteModal from '@/components/BaseDeleteModal.vue'
 import { t } from '@/utils/i18n'
 import { useQuizStore } from '@/stores/QuizStore'
@@ -18,7 +20,7 @@ import {
 import TimerService from '@/services/timerService'
 import { buildQuizCategoryPayload } from '@/utils/quizPayloadBuilder'
 import type { QuizInfo, QuizInfoQuestion, QuizAnswerValue, QuizStep } from '@/types/Quiz'
-import { CourseExecutionType } from '@/types/Course'
+import { CourseExecutionType, VisibilityStatus, VisibilityType } from '@/types/Course'
 import type { TimerItem } from '@/types/timer'
 import { PublishStatus, ExecutionStatus, type ActionButtonConfig } from '@/types/GlobalTypes'
 const props = defineProps<{
@@ -44,6 +46,9 @@ const showEndQuizModal = ref(false)
 const showRetakeQuizModal = ref(false)
 const showDeleteModal = ref(false)
 const showQuizCreationModal = ref(false)
+const showProgressTable = ref(false)
+const selectedQuizVisibility = ref<VisibilityStatus | null>(null)
+const showVisibilityChangeModal = ref(false)
 
 const steps = computed((): QuizStep[] => {
   if (!quizData.value) return []
@@ -98,6 +103,11 @@ const showFailedScreen = computed(() => {
   return quizData.value?.execution?.status === ExecutionStatus.FAILED
 })
 
+// Check if quiz is draft and user is not admin - show permission denied
+const isDraftAndNotAdmin = computed(() => {
+  return quizData.value?.status === PublishStatus.DRAFT && !props.isAdmin
+})
+
 const isRetakeDisabled = computed(() => {
   if (!quizData.value || !quizData.value.execution) return false
   const attempts = quizData.value.execution.attempts ?? 0
@@ -144,7 +154,12 @@ const handleTimerStart = async (fromEvent: boolean = true) => {
   }
 
   // Only call API if not initializing and timerId exists
-  if (!isInitializingTimer.value && quizData.value?.execution?.timerId) {
+  console.log('isDraftAndNotAdmin.value', isDraftAndNotAdmin.value)
+  if (
+    !isInitializingTimer.value &&
+    quizData.value?.execution?.timerId &&
+    isDraftAndNotAdmin.value === false
+  ) {
     try {
       await TimerService.startTimer(quizData.value.execution.timerId)
       if (timerDetails.value) {
@@ -308,7 +323,7 @@ const populateAnswersFromExecution = (categoryId?: number) => {
 
 const initializeTimer = async () => {
   // Fetch timer details if timerId exists
-  if (quizData.value?.execution?.timerId) {
+  if (quizData.value?.execution?.timerId && isDraftAndNotAdmin.value === false) {
     try {
       isInitializingTimer.value = true // Set flag to prevent API calls during initialization
 
@@ -532,7 +547,18 @@ const checkIfCategoryHasAnswers = (): boolean => {
 }
 
 const handleEditQuiz = () => {
-  showQuizCreationModal.value = true
+  if (!props.isAdmin) {
+    return
+  }
+  if (
+    quizData.value?.visibility === VisibilityStatus.MAINTENANCE ||
+    quizData.value?.visibility === VisibilityStatus.HIDE
+  ) {
+    showQuizCreationModal.value = true
+    return
+  }
+  selectedQuizVisibility.value = quizData.value?.visibility || VisibilityStatus.SHOW
+  showVisibilityChangeModal.value = true
 }
 const handleDeleteClick = () => {
   showDeleteModal.value = true
@@ -551,6 +577,23 @@ const handleConfirmDelete = async () => {
 const handleCloseQuizCreationModal = async () => {
   showQuizCreationModal.value = false
   await loadQuiz()
+}
+
+const handleVisibilityChangeSave = async () => {
+  showVisibilityChangeModal.value = false
+  selectedQuizVisibility.value = null
+  await loadQuiz()
+}
+
+const handleVisibilityChangeEdit = async () => {
+  showQuizCreationModal.value = true
+  showVisibilityChangeModal.value = false
+  selectedQuizVisibility.value = null
+}
+
+const handleVisibilityChangeClose = () => {
+  showVisibilityChangeModal.value = false
+  selectedQuizVisibility.value = null
 }
 
 const validateCurrentStep = (): boolean => {
@@ -638,31 +681,48 @@ const handleNext = async () => {
   // Note: On last step, Next button is disabled, user should use End Quiz button
 }
 
-const actionButtons = computed<ActionButtonConfig[]>(() => [
-  {
-    id: 'delete',
-    text: t('pages.quiz.buttons.delete'),
-    variant: 'default',
-    color: 'error',
-    leftIcon: 'delete',
-    tooltipText: t('pages.quiz.buttons.cannotDeleteNotDraft'), // Cannot delete if not in Draft status
-    onClick: handleDeleteClick,
-    disabled: quizData.value?.status === PublishStatus.PUBLISHED,
-  },
-  {
-    id: 'edit',
-    text: t('pages.quiz.buttons.edit'),
-    variant: 'outline',
-    color: 'primary',
-    leftIcon: 'edit',
-    tooltipText: t('pages.quiz.buttons.cannotEditNotDraft'),
-    onClick: handleEditQuiz,
-    disabled: false,
-  },
-])
+const actionButtons = computed<ActionButtonConfig[]>(() => {
+  const isDraft = quizData.value?.status === PublishStatus.DRAFT
+  const isMaintenance = quizData.value?.visibility === VisibilityStatus.MAINTENANCE
+  const isDeleteDisabled = !isDraft && !isMaintenance
+
+  return [
+    {
+      id: 'delete',
+      text: t('pages.quiz.buttons.delete'),
+      variant: 'default',
+      color: 'error',
+      leftIcon: 'delete',
+      tooltipText: isDeleteDisabled ? t('pages.quiz.buttons.cannotDeleteNotDraft') : '',
+      onClick: handleDeleteClick,
+      disabled: isDeleteDisabled,
+    },
+    {
+      id: 'edit',
+      text: t('pages.quiz.buttons.edit'),
+      variant: 'outline',
+      color: 'primary',
+      leftIcon: 'edit',
+      tooltipText: t('pages.quiz.buttons.cannotEditNotDraft'),
+      onClick: handleEditQuiz,
+      disabled: false,
+    },
+  ]
+})
+const handleProgressQuiz = () => {
+  showProgressTable.value = true
+}
+
+const handleCloseProgressTable = () => {
+  showProgressTable.value = false
+}
 </script>
 <template>
-  <div v-if="!isLoading" class="min-h-screen bg-white">
+  <!-- Permission Denied Screen for Draft Quiz (non-admin users) -->
+  <PermissionDenied v-if="!isLoading && isDraftAndNotAdmin" @back="handleCancel" />
+
+  <!-- Normal Quiz Detail View -->
+  <div v-if="!isLoading && !isDraftAndNotAdmin" class="min-h-screen bg-white">
     <header class="sticky top-0 z-50 !bg-white !border-b !border-gray-200">
       <div
         class="flex flex-col sm:flex-row sm:items-center px-4 sm:px-4 md:px-3 lg:px-8 pt-4 sm:pt-4 md:pt-3 lg:pt-6 pb-3 sm:pb-2.5 md:pb-2 lg:pb-[12px] sm:justify-between gap-3 sm:gap-2 md:gap-2 lg:gap-3 !bg-white !border-b !border-gray-200"
@@ -752,6 +812,16 @@ const actionButtons = computed<ActionButtonConfig[]>(() => [
             class="!min-w-[80px] sm:!min-w-[95px] !font-medium whitespace-nowrap !text-xs sm:!text-sm"
             @onClick="handleEndQuiz"
           />
+          <BaseButton
+            v-if="props.isAdmin"
+            :text="t('pages.common.progress')"
+            leftIcon="eye"
+            variant="default"
+            color="neutral"
+            size="xs"
+            class="!min-w-[110px] sm:!min-w-[110px] !font-medium whitespace-nowrap !text-xs sm:!text-sm"
+            @onClick="handleProgressQuiz"
+          />
         </div>
       </div>
 
@@ -830,11 +900,28 @@ const actionButtons = computed<ActionButtonConfig[]>(() => [
       :isAdmin="props.isAdmin"
       @close="handleCloseQuizCreationModal"
     />
+    <CourseVisibilityChangeModal
+      v-if="showVisibilityChangeModal && props.isAdmin && quizData"
+      :isOpen="showVisibilityChangeModal"
+      :itemId="Number(quizId)"
+      :currentVisibility="selectedQuizVisibility as VisibilityStatus"
+      @onClose="handleVisibilityChangeClose"
+      @onSave="handleVisibilityChangeSave"
+      :type="VisibilityType.QUIZ"
+      @onEdit="handleVisibilityChangeEdit"
+    />
   </div>
 
   <div v-else-if="isLoading" class="min-h-screen bg-white flex items-center justify-center">
     <BaseText :text="t('pages.quiz.loading')" color="neutral" :tone="500" class="text-lg" />
   </div>
+  <ProgressTable
+    v-if="showProgressTable"
+    :isOpen="showProgressTable"
+    @onClose="handleCloseProgressTable"
+    :id="Number(quizId)"
+    :type="CourseExecutionType.QUIZ"
+  />
 </template>
 <style scoped>
 .fade-enter-active,

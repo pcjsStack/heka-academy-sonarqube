@@ -95,9 +95,19 @@
         :aria-required="required"
       />
 
+      <!-- Clear button -->
+      <div
+        v-if="showClearButton"
+        class="absolute right-4 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center cursor-pointer hover:text-neutral-700 transition-colors"
+        @click.prevent="handleClear"
+        :aria-label="'Clear input'"
+      >
+        <BaseIcon name="clear" class="text-neutral-400 hover:text-neutral-600" size="sm" />
+      </div>
+
       <!-- Right icon -->
       <div
-        v-if="iconName"
+        v-else-if="iconName"
         :class="iconClasses"
         class="absolute right-4 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center"
         @click.prevent="emit('onClickIcon')"
@@ -133,7 +143,7 @@
 
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { BaseTooltipIcon as BaseTooltipIcons, BaseIcon, BaseText } from '@/components/common'
 import type { Icons, PrimaryColors } from '@/types/Styles'
 
@@ -154,6 +164,7 @@ const props = defineProps<{
   iconClickable?: boolean
   iconName?: Icons
   iconNameLeft?: Icons
+  clearable?: boolean
   iconColor?: PrimaryColors
   autofocus?: boolean
   inputRows?: number
@@ -210,6 +221,83 @@ const handleCheckboxInput = (event: Event) => {
   emit('onInput', event)
 }
 
+const handleClear = () => {
+  if (props.disabled || props.readonly) {
+    return
+  }
+
+  // Clear the value based on input type
+  const clearedValue = props.type === 'checkbox' ? false : ''
+
+  // Update the input element value first to ensure it's in sync
+  const inputElement = inputRef.value as HTMLInputElement | HTMLTextAreaElement | null
+  if (inputElement && props.type !== 'checkbox') {
+    inputElement.value = clearedValue as string
+  }
+
+  // Emit the value update
+  emit('update:modelValue', clearedValue)
+
+  // Create an event object for parent handlers that expect event.target.value
+  // Ensure we always have a valid target with a value property
+  let eventTarget: HTMLInputElement
+
+  if (inputElement && props.type !== 'checkbox') {
+    // Use the actual input element (we've already set its value)
+    eventTarget = inputElement as HTMLInputElement
+    // Double-check value is set
+    eventTarget.value = clearedValue as string
+  } else {
+    // Create a simple target object with value property
+    eventTarget = {
+      value: clearedValue as string,
+    } as HTMLInputElement
+  }
+
+  // Create a synthetic event object that mimics a real input event
+  const clearEvent = {
+    type: 'input',
+    bubbles: true,
+    cancelable: true,
+    target: eventTarget,
+    currentTarget: eventTarget,
+    preventDefault: () => {},
+    stopPropagation: () => {},
+    stopImmediatePropagation: () => {},
+  } as unknown as Event
+
+  emit('onInput', clearEvent)
+
+  // Focus the input after clearing
+  if (inputElement && typeof inputElement.focus === 'function') {
+    nextTick(() => {
+      inputElement.focus()
+    })
+  }
+}
+
+// Show clear button when clearable is true, input has value, and not disabled/readonly
+const showClearButton = computed(() => {
+  if (!props.clearable || props.disabled || props.readonly) {
+    return false
+  }
+
+  // Don't show for checkbox (it has its own toggle)
+  if (props.type === 'checkbox') {
+    return false
+  }
+
+  // Check if input has a value
+  if (props.type === 'textArea') {
+    return !!props.modelValue && String(props.modelValue).trim().length > 0
+  }
+
+  // For other input types
+  const hasValue =
+    props.modelValue !== null && props.modelValue !== undefined && props.modelValue !== ''
+  return hasValue
+})
+
 const inputClasses = computed(() => [
   'w-full rounded-lg border placeholder:text-neutral-500 placeholder:text-sm-custom placeholder:font-medium py-2.5 px-3.5 h-10 text-sm-custom font-medium text-black/85 transition-all duration-300',
   {
@@ -223,7 +311,7 @@ const inputClasses = computed(() => [
     'py-2.5 rounded-lg text-sm text-neutral-600 leading-5 font-normal w-72':
       props.iconName || props.iconNameLeft,
     'pl-10': props.iconNameLeft || !!props.prefixLeftText,
-    'pr-10': props.iconName || !!props.prefixRightText,
+    'pr-10': props.iconName || !!props.prefixRightText || showClearButton,
   },
 ])
 

@@ -10,7 +10,7 @@ export const useUploadFilesStore = defineStore('uploadFiles', {
     files: [] as UploadFileResponse[],
     totalFiles: 0,
     totalPages: 0,
-    currentPage: 1,
+    currentPage: 0,
     isLoading: false,
   }),
   actions: {
@@ -55,7 +55,7 @@ export const useUploadFilesStore = defineStore('uploadFiles', {
 
         this.totalFiles = response.total
         this.totalPages = response.totalPage
-        this.currentPage = params.page || 1
+        this.currentPage = params.page || 0
         return response
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : t('types.error.fetchingFiles')

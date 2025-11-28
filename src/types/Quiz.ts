@@ -1,4 +1,4 @@
-import type { CourseParticipantsView, ParticipantShape, VisibilityStatus } from './Course'
+import type { ParticipantShape, VisibilityStatus } from './Course'
 import type { ExecutionDetails, GlobalParams, PublishStatus } from './GlobalTypes'
 import { CourseExecutionType } from './Course'
 import { QuizQuestionType } from './QuizPayload'
@@ -31,6 +31,7 @@ export interface quizItem {
   startDate: string | null
   endDate: string | null
   execution: ExecutionDetails | null
+  visibility: VisibilityStatus
 }
 
 export interface QuizAttachment {
@@ -113,7 +114,7 @@ export interface QuizInfo {
   attachment: QuizAttachment
   categories: QuizInfoCategory[]
   participants: ParticipantShape[]
-  participantsView: CourseParticipantsView
+  visibility: VisibilityStatus
 }
 
 export interface GetQuizzesParams extends GlobalParams {

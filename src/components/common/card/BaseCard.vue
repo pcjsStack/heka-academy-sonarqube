@@ -88,9 +88,7 @@ const handleCardClick = () => {
 const menuItems = (visibility: VisibilityStatus) => {
   // Enable edit only when visibility is MAINTENANCE or HIDE
   // Edit is disabled when visibility is NOT (MAINTENANCE OR HIDE)
-  const isEditDisabled = !(
-    visibility === VisibilityStatus.MAINTENANCE || visibility === VisibilityStatus.HIDE
-  )
+  const isEditDisabled = !(visibility === VisibilityStatus.MAINTENANCE)
 
   const deleteDisabledTooltip = isEditDisabled ? t('pages.common.cannotDeleteNotDraft') : undefined
 

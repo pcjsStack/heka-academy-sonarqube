@@ -43,7 +43,7 @@ const hasNoCourses = computed(
 
 onMounted(async () => {
   try {
-    const params: GetCoursesParams = { page: 0, perPage: 8, order: 'asc', orderColumn: 'name' }
+    const params: GetCoursesParams = { page: 0, perPage: 12, order: 'asc', orderColumn: 'name' }
     await coursesStore.fetchCourses({ ...params, isAdmin: props.isAdmin })
     courses.value = coursesStore.courses
   } catch (error) {
@@ -133,7 +133,7 @@ const handleVisibilityChangeSave = async () => {
   selectedCourseVisibility.value = null
   await coursesStore.fetchCourses({
     page: 0,
-    perPage: 8,
+    perPage: 12,
     order: 'asc',
     orderColumn: 'name',
     isAdmin: props.isAdmin,

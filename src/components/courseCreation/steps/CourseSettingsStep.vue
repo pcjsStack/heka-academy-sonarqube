@@ -121,7 +121,7 @@ watch(
 // Scroll bottom handlers for lazy loading
 const handleCategoryScrollBottom = async () => {
   if (!categoryStore.categoriesIsLoading && hasMoreCategories.value) {
-    await categoryStore.loadMoreCategories({ perPage: 8 })
+    await categoryStore.loadMoreCategories({ perPage: 8, isAdmin: true })
   }
 }
 

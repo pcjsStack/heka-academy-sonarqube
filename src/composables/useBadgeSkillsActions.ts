@@ -3,7 +3,6 @@ import { useBadgeAndSkillStore } from '@/stores/BadgeAndSkill'
 import { t } from '@/utils/i18n'
 import type { BadgeFormData, SkillsFormData } from '@/types/BadgeAndSkill'
 import type { GetBadgesParams, GetSkillsParams } from '@/types/BadgeAndSkill'
-import type { Assignation } from '@/types/Lessons'
 
 export function useBadgeSkillsActions(
   buildBadgeParams: () => GetBadgesParams,
@@ -45,11 +44,11 @@ export function useBadgeSkillsActions(
         image: badge.attachment ? [badge.attachment] : [],
         imageUrl: badge.attachment?.url || undefined,
         associations: {
-          fileIds: badge.files.map((file: Assignation) => file.relatedId.toString()),
-          courseIds: badge.courses.map((course: Assignation) => course.relatedId.toString()),
-          lessonIds: badge.lessons.map((lesson: Assignation) => lesson.relatedId.toString()),
-          quizIds: badge.quizzes.map((quiz: Assignation) => quiz.relatedId.toString()),
-        },
+          files: badge.files || [],
+          courses: badge.courses || [],
+          lessons: badge.lessons || [],
+          quizzes: badge.quizzes || [],
+        } as unknown as BadgeFormData['associations'],
       }
       console.log('editingBadgeData', editingBadgeData.value)
       showEditBadgeModal.value = true
@@ -63,11 +62,11 @@ export function useBadgeSkillsActions(
       editingSkillsData.value = {
         names: [skill.name],
         associations: {
-          fileIds: skill.files.map((file: Assignation) => file.relatedId.toString()),
-          courseIds: skill.courses.map((course: Assignation) => course.relatedId.toString()),
-          lessonIds: skill.lessons.map((lesson: Assignation) => lesson.relatedId.toString()),
-          quizIds: skill.quizzes.map((quiz: Assignation) => quiz.relatedId.toString()),
-        },
+          files: skill.files || [],
+          courses: skill.courses || [],
+          lessons: skill.lessons || [],
+          quizzes: skill.quizzes || [],
+        } as unknown as SkillsFormData['associations'],
       }
       showEditSkillModal.value = true
     }

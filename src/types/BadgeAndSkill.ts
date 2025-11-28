@@ -77,6 +77,7 @@ export interface Badge {
   imageUrl?: string
   createdAt?: string
   updatedAt?: string
+  isDeleted?: boolean
 }
 
 export interface BadgeDetails {
@@ -101,6 +102,7 @@ export interface Skill {
   imageUrl?: string
   createdAt?: string
   updatedAt?: string
+  isDeleted?: boolean
 }
 
 export interface GetBadgesParams {
@@ -125,4 +127,37 @@ export interface BadgeSkillsResponse {
   page?: number
   perPage?: number
   totalPage?: number
+}
+
+export interface BadgeSkillsFilters {
+  deleted?: boolean
+}
+
+export interface StoredAssociations {
+  files: Assignation[]
+  courses: Assignation[]
+  lessons: Assignation[]
+  quizzes: Assignation[]
+}
+
+export interface ExtendedBadgeAssociations {
+  files?: Assignation[]
+  courses?: Assignation[]
+  lessons?: Assignation[]
+  quizzes?: Assignation[]
+  fileIds?: string[]
+  courseIds?: string[]
+  lessonIds?: string[]
+  quizIds?: string[]
+}
+
+export interface ExtendedSkillsAssociations {
+  files?: Assignation[]
+  courses?: Assignation[]
+  lessons?: Assignation[]
+  quizzes?: Assignation[]
+  fileIds?: string[]
+  courseIds?: string[]
+  lessonIds?: string[]
+  quizIds?: string[]
 }

@@ -218,10 +218,10 @@ const handleVisibilityChangeEdit = async () => {
           <div v-for="item in lessonsStore.lessons" :key="item.id">
             <BaseCard
               :title="item.name"
-              :category="item.status"
+              :category="''"
               :categoryColor="'blue'"
-              :mentor="`${item.user.firstName} ${item.user.surname}`"
-              :mentorAvatar="''"
+              :mentor="(item.user?.firstName || '') + ' ' + (item.user?.surname || '')"
+              :mentorAvatar="(item.user?.firstName || '') + ' ' + (item.user?.surname || '')"
               :progress="item.execution?.percentage || 0"
               :thumbnail="item.imageUrl"
               :isAdmin="isAdmin"

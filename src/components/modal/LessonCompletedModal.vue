@@ -14,42 +14,11 @@
       <!-- Content Area - takes up available space -->
       <div class="flex flex-col items-center justify-center px-4 lg:px-6 flex-1">
         <!-- Achievement Section -->
-        <div class="flex flex-col items-center mb-6">
-          <!-- Profile Picture with Crown and Position Badge -->
-          <div class="relative mb-3 lg:mb-4">
-            <!-- Crown Icon -->
-            <img
-              :src="crownIcon"
-              alt="crown"
-              class="absolute -top-8 left-1/2 -translate-x-1/2 w-10 h-10 z-10"
-            />
-            <img
-              :src="userProfileImage"
-              :alt="userName"
-              class="w-24 h-24 rounded-full object-cover border-4 border-primary-950 shadow-lg"
-            />
-            <!-- Position Badge -->
-            <div
-              class="absolute -bottom-3 left-1/2 -translate-x-1/2 lg:-bottom-4 w-6 h-6 lg:w-8 lg:h-8 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white"
-            >
-              <span class="text-white text-xs lg:text-sm font-bold">{{ position }}</span>
-            </div>
-          </div>
-
-          <!-- User Name -->
-          <h3 class="text-lg font-medium text-black leading-none tracking-[-0.02em] mt-[15px] mb-2">
-            {{ userName }}
-          </h3>
-
-          <!-- Points Badge -->
-          <div class="flex items-center gap-[10px] bg-warning-500-10 rounded-[10px] px-2 py-1.5">
-            <BaseIcon name="stars" size="sm" class="!text-warning-500" />
-            <span class="text-lg font-medium leading-none tracking-[-0.02em] !text-warning-500"
-              >{{ points }} {{ t('pages.lessonCompleted.points') }}</span
-            >
-          </div>
-        </div>
-
+        <img
+          :src="success"
+          alt="Success"
+          class="mx-auto w-[100px] h-[100px] sm:mb-[40px] mb-[22px]"
+        />
         <!-- Congratulatory Messages -->
         <div class="text-center space-y-2 lg:space-y-3 max-w-[330px]">
           <p class="text-base font-medium text-black leading-6 tracking-[-0.02em]">
@@ -92,23 +61,18 @@
 </template>
 
 <script setup lang="ts">
-import { BaseSideModal, BaseButton, BaseIcon } from '@/components/common'
+import { BaseSideModal, BaseButton } from '@/components/common'
 import { t } from '@/utils/i18n'
-import crownIcon from '@/assets/images/crown.png'
-import jennyImg from '@/assets/users/Jenny.png'
+import success from '@/assets/gif/success.gif'
 
 interface LessonCompletedModalProps {
   userName?: string
-  userProfileImage?: string
   position?: number
-  points?: number
 }
 
 withDefaults(defineProps<LessonCompletedModalProps>(), {
   userName: 'Jenny Wilson',
-  userProfileImage: jennyImg,
   position: 1,
-  points: 240,
 })
 
 const emit = defineEmits<{

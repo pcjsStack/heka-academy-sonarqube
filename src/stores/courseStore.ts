@@ -45,7 +45,7 @@ export const useCourseStore = defineStore('course', {
 
         this.coursesTotal = response.total
         this.coursesTotalPages = response.totalPage
-        this.coursesCurrentPage = params?.page ?? 1
+        this.coursesCurrentPage = params?.page ?? 0
         return response
       } catch (error) {
         const errorMessage =
@@ -235,7 +235,7 @@ export const useCourseStore = defineStore('course', {
           tone: 'success',
           message: t('types.success.deletingCourse'),
         })
-        await this.fetchCourses({ page: 0, perPage: 8, isAdmin: true })
+        await this.fetchCourses({ page: 0, perPage: 12, isAdmin: true })
         return response
       } catch (error) {
         const errorMessage =
@@ -284,6 +284,12 @@ export const useCourseStore = defineStore('course', {
         })
         throw error
       }
+    },
+    resetCourseParticipants() {
+      this.courseParticipants = []
+      this.courseParticipantsTotal = 0
+      this.courseParticipantsCurrentPage = 1
+      this.courseParticipantsPerPage = 5
     },
   },
   getters: {

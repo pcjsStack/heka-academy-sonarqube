@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { BaseText, BaseTable, BaseInput } from '@/components/common'
+import { BaseText, BaseTable, BaseInput, BaseCircularProgress } from '@/components/common'
 import { t } from '@/utils/i18n'
 import { progressColumns } from '@/mock/participantColumn'
 import type { RowType } from '@/types/BaseTable'
@@ -9,6 +9,7 @@ import { CourseExecutionType } from '@/types/Course'
 import { debounce, formattedTime } from '@/utils/generalUtils'
 import TimerService from '@/services/timerService'
 import { ExecutionStatus } from '@/types/GlobalTypes'
+import type { PrimaryColors } from '@/types/Styles'
 
 interface Props {
   courseId: number
@@ -89,16 +90,26 @@ const fetchProgressData = async (page: number = 1, search: string = '') => {
 
 // Get progress status text based on percentage
 const getProgressStatus = (status: ExecutionStatus): { text: string; color: string } => {
-  console.log('status', status)
   if (status === ExecutionStatus.COMPLETED) {
     return { text: t('pages.courseDetails.status.done'), color: 'text-green-800 bg-green-100' }
   } else if (status === ExecutionStatus.IN_PROGRESS) {
     return { text: t('pages.courseDetails.status.inProgress'), color: 'text-blue-800 bg-blue-100' }
+  } else if (status === ExecutionStatus.FAILED) {
+    return { text: t('pages.courseDetails.status.failed'), color: 'text-red-800 bg-red-100' }
   } else {
     return { text: t('pages.courseDetails.status.todo'), color: 'text-gray-800 bg-gray-100' }
   }
 }
 
+const getProgressColor = (status: ExecutionStatus): PrimaryColors => {
+  if (status === ExecutionStatus.COMPLETED) {
+    return 'success'
+  } else if (status === ExecutionStatus.FAILED) {
+    return 'error'
+  } else {
+    return 'info'
+  }
+}
 // Map API data to table row format for progress
 const progressTableData = computed<RowType[]>(() => {
   return courseStore.courseParticipants.map((participant) => {
@@ -167,14 +178,23 @@ onMounted(() => {
         @page-change="handlePageChange"
       >
         <template #cell-progress="{ row }">
-          <span
-            :class="[
-              'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-              getProgressStatus(row.status as ExecutionStatus).color,
-            ]"
-          >
-            {{ getProgressStatus(row.status as ExecutionStatus).text }}
-          </span>
+          <div class="flex items-center justify-between gap-2">
+            <span
+              :class="[
+                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                getProgressStatus(row.status as ExecutionStatus).color,
+              ]"
+            >
+              {{ getProgressStatus(row.status as ExecutionStatus).text }}
+            </span>
+            <BaseCircularProgress
+              v-if="type === CourseExecutionType.QUIZ"
+              :value="row.progress as number"
+              :max="100"
+              size="sm"
+              :color="getProgressColor(row.status as ExecutionStatus)"
+            />
+          </div>
         </template>
         <template #cell-time="{ row }">
           <div class="flex items-center gap-2">

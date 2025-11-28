@@ -82,12 +82,9 @@ watch(
   },
 )
 
-const isDisabled = computed(() => {
-  return (
-    courseStore.courseDetails?.visibility !== VisibilityStatus.MAINTENANCE &&
-    courseStore.courseDetails?.visibility !== VisibilityStatus.HIDE
-  )
-})
+const isDisabled = computed(
+  () => courseStore.courseDetails?.visibility !== VisibilityStatus.MAINTENANCE,
+)
 
 const actionButtons = computed<ActionButtonConfig[]>(() => [
   {
@@ -214,7 +211,7 @@ const handleConfirmDelete = async () => {
     itemActions.selectedItemId.value === Number(route.params.id) &&
     itemActions.selectedItemType.value === CourseActionType.COURSE
 
-  await itemActions.handleConfirmDelete()
+  await itemActions.handleConfirmDelete(false)
 
   // If deleting the current course, navigate back
   if (isDeletingCurrentCourse) {

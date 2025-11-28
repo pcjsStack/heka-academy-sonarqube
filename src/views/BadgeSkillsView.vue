@@ -10,12 +10,12 @@ import {
   BadgeSkillsFilter,
   BadgeSkillsGrid,
 } from '@/components/badgeSkills'
+import HeaderView from '@/components/layouts/HeaderView.vue'
 import { useBadgeAndSkillStore } from '@/stores/BadgeAndSkill'
 import { useBadgeSkillsActions } from '@/composables/useBadgeSkillsActions'
 import { t } from '@/utils/i18n'
 import type { GetBadgesParams, GetSkillsParams } from '@/types/BadgeAndSkill'
-import type { BadgeSkillsFilters } from '@/components/badgeSkills/BadgeSkillsFilter.vue'
-import HeaderView from '@/components/layouts/HeaderView.vue'
+import type { BadgeSkillsFilters } from '@/types/BadgeAndSkill'
 
 interface Props {
   isAdmin?: boolean
@@ -57,7 +57,7 @@ const hasActiveFilters = computed(() => Boolean(currentFilters.value.deleted))
 // Build API params functions
 const buildBadgeParams = (): GetBadgesParams => ({
   isAdmin: props.isAdmin,
-  deletedFilter: badgeFilters.value.deleted ? 'active' : undefined,
+  deletedFilter: badgeFilters.value.deleted ? 'deleted' : 'active',
   search: badgeSearchQuery.value.trim() || undefined,
   page: badgePage.value - 1,
   perPage,
@@ -65,7 +65,7 @@ const buildBadgeParams = (): GetBadgesParams => ({
 
 const buildSkillParams = (): GetSkillsParams => ({
   isAdmin: props.isAdmin,
-  deletedFilter: skillFilters.value.deleted ? 'active' : undefined,
+  deletedFilter: skillFilters.value.deleted ? 'deleted' : 'active',
   search: skillSearchQuery.value.trim() || undefined,
   page: skillPage.value - 1,
   perPage,
@@ -190,6 +190,7 @@ const handleBack = () => {
       :isBack="true"
       @back="handleBack"
       :isSearch="true"
+      :searchClear="true"
       @inputChange="handleSearchInput"
       :isFilter="isAdmin"
       :searchText="currentSearchQuery"

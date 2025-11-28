@@ -210,6 +210,7 @@
         :hide-search-text="true"
         :disabled="disabled"
         :model-value="photoAttachments"
+        :max-size="1024"
         @update:model-value="handlePhotoUpdate"
       />
       <BaseText

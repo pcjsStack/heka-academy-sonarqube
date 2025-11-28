@@ -27,6 +27,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: BadgeFormData]
   'validation-change': [validation: BadgeFormValidation]
   'scroll-bottom': [type: 'file' | 'course' | 'lessons' | 'quiz']
+  search: [type: 'file' | 'course' | 'lessons' | 'quiz', query: string]
 }>()
 
 const uploadedFiles = ref<MediaType[]>([])
@@ -45,20 +46,22 @@ const displayFiles = computed(() => {
 
 // Validation computed properties
 const validation = computed((): BadgeFormValidation => {
-  const isNameValid = badgeData.value.name.trim() !== ''
+  const hasName = badgeData.value.name.trim() !== ''
   const maxSize = 10 * 1024 * 1024 // 10MB in bytes
 
   // Check if we have an image (either existing Media or new File)
   const hasImage = badgeData.value.image.length > 0 || uploadedFiles.value.length > 0
-  let isImageValid = hasImage
+  let isImageValid = true // Default to valid
+  let isImageSizeValid = true
 
   // Check file size if it's a new File (not existing Media)
-  if (isImageValid && badgeData.value.image[0]) {
+  if (hasImage && badgeData.value.image[0]) {
     const imageItem = badgeData.value.image[0]
     // Only validate size for File objects, not Media objects
     if (imageItem instanceof File) {
       const fileSize = (imageItem as File).size
-      isImageValid = fileSize <= maxSize
+      isImageSizeValid = fileSize <= maxSize
+      isImageValid = isImageSizeValid
     }
   }
 
@@ -69,8 +72,44 @@ const validation = computed((): BadgeFormValidation => {
     badgeData.value.associations.lessonIds.length > 0 ||
     badgeData.value.associations.quizIds.length > 0
 
-  // Association is required only if name and image are filled
-  const isAssociationValid = !(isNameValid && isImageValid) || hasAssociation
+  // If nothing is filled, badge is optional (skip it)
+  const isAllEmpty = !hasName && !hasImage && !hasAssociation
+
+  // Validation rules:
+  // 1. If name is entered -> image and association are required
+  // 2. If image is selected -> name and association are required
+  // 3. If association is selected -> name and image are required
+  // 4. If all empty -> valid (skip badge)
+
+  let isNameValid = true
+  let isAssociationValid = true
+
+  if (isAllEmpty) {
+    // All empty - badge is optional, form is valid
+    isNameValid = true
+    isImageValid = true
+    isAssociationValid = true
+  } else {
+    // At least one field is filled - apply conditional validation
+    // Rules:
+    // 1. If name is entered -> image and association are required
+    // 2. If image is selected -> name and association are required
+    // 3. If association is selected -> name and image are required
+
+    // Name is required if image OR association is selected
+    isNameValid = !hasImage && !hasAssociation ? true : hasName
+
+    // Image is required if name OR association is entered
+    // Also check image size if image exists
+    if (hasName || hasAssociation) {
+      isImageValid = hasImage && isImageSizeValid
+    } else {
+      isImageValid = true // Image not required
+    }
+
+    // Association is required if name OR image is entered
+    isAssociationValid = !hasName && !hasImage ? true : hasAssociation
+  }
 
   const isFormValid = isNameValid && isImageValid && isAssociationValid
 
@@ -224,6 +263,10 @@ const handleScrollBottom = (type: 'file' | 'course' | 'lessons' | 'quiz') => {
   emit('scroll-bottom', type)
 }
 
+const handleSearch = (type: 'file' | 'course' | 'lessons' | 'quiz', query: string) => {
+  emit('search', type, query)
+}
+
 const getImageErrorMessage = (): string => {
   const imageItem = badgeData.value.image[0]
   if (imageItem && imageItem instanceof File && imageItem.size > 10 * 1024 * 1024) {
@@ -248,7 +291,14 @@ const getImageErrorMessage = (): string => {
         :label="t('pages.badgeSkills.badge.name')"
         :placeholder="t('pages.badgeSkills.badge.namePlaceholder')"
         type="text"
-        required
+        :required="
+          badgeData.image.length > 0 ||
+          uploadedFiles.length > 0 ||
+          badgeData.associations.fileIds.length > 0 ||
+          badgeData.associations.courseIds.length > 0 ||
+          badgeData.associations.lessonIds.length > 0 ||
+          badgeData.associations.quizIds.length > 0
+        "
         :error="!validation.isNameValid && badgeData.name !== ''"
         :error-message="t('pages.badgeSkills.badge.nameRequired')"
         @update:model-value="handleNameChange"
@@ -266,7 +316,13 @@ const getImageErrorMessage = (): string => {
         iconName="image"
         :label="t('pages.badgeSkills.badge.image')"
         labelClass="!text-[12px] !leading-[15px] mb-1.5 !text-neutral-700"
-        required
+        :required="
+          badgeData.name.trim() !== '' ||
+          badgeData.associations.fileIds.length > 0 ||
+          badgeData.associations.courseIds.length > 0 ||
+          badgeData.associations.lessonIds.length > 0 ||
+          badgeData.associations.quizIds.length > 0
+        "
         :model-value="badgeData.image"
         :max-size="10"
         @update:model-value="handleFileUpload"
@@ -329,10 +385,38 @@ const getImageErrorMessage = (): string => {
 
       <!-- Custom error display for image validation -->
       <div
-        v-if="!validation.isImageValid && (badgeData.image.length > 0 || uploadedFiles.length > 0)"
+        v-if="
+          !validation.isImageValid &&
+          (badgeData.image.length > 0 ||
+            uploadedFiles.length > 0 ||
+            badgeData.name.trim() !== '' ||
+            badgeData.associations.fileIds.length > 0 ||
+            badgeData.associations.courseIds.length > 0 ||
+            badgeData.associations.lessonIds.length > 0 ||
+            badgeData.associations.quizIds.length > 0)
+        "
         class="mt-2"
       >
         <BaseText :text="getImageErrorMessage()" color="error" :tone="600" size="sm" />
+      </div>
+      <!-- Show error if image is required but not provided -->
+      <div
+        v-else-if="
+          !validation.isImageValid &&
+          (badgeData.name.trim() !== '' ||
+            badgeData.associations.fileIds.length > 0 ||
+            badgeData.associations.courseIds.length > 0 ||
+            badgeData.associations.lessonIds.length > 0 ||
+            badgeData.associations.quizIds.length > 0)
+        "
+        class="mt-2"
+      >
+        <BaseText
+          :text="t('pages.badgeSkills.badge.imageRequired')"
+          color="error"
+          :tone="600"
+          size="sm"
+        />
       </div>
     </div>
 
@@ -353,7 +437,10 @@ const getImageErrorMessage = (): string => {
 
       <!-- Error message for association validation -->
       <div
-        v-if="!validation.isAssociationValid && validation.isNameValid && validation.isImageValid"
+        v-if="
+          !validation.isAssociationValid &&
+          (badgeData.name.trim() !== '' || badgeData.image.length > 0 || uploadedFiles.length > 0)
+        "
         class="mb-3"
       >
         <BaseText
@@ -391,10 +478,12 @@ const getImageErrorMessage = (): string => {
             :options="getAssociationOptions(associationType)"
             :placeholder="t('pages.badgeSkills.associations.select')"
             multiple
+            searchable
             size="md"
             class="!w-[380px] flex-shrink-0"
             @update:model-value="(values) => handleAssociationChange(associationType, values)"
             @scroll-bottom="() => handleScrollBottom(associationType)"
+            @on-search="(query) => handleSearch(associationType, query)"
           />
         </div>
       </div>

@@ -195,6 +195,10 @@ export interface ParticipantShape {
   relatedId: number
   relatedType: ParticipantType
   order?: number
+  model?: {
+    id: number
+    name: string
+  }
   createdAt?: string
 }
 export interface ParticipantShapePayload {

@@ -2,7 +2,14 @@
 import { ref, computed, watch } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { GroupOptions } from 'sortablejs'
-import { BaseTab, BaseText, BaseButtonIcon, BaseIcon, BaseCheckbox } from '@/components/common'
+import {
+  BaseTab,
+  BaseText,
+  BaseButtonIcon,
+  BaseIcon,
+  BaseCheckbox,
+  BaseButton,
+} from '@/components/common'
 import { t } from '@/utils/i18n'
 import CohortService from '@/services/cohort'
 import type { ParticipantItem, QuizParticipantsExpose } from '@/types/QuizCreation'
@@ -514,6 +521,7 @@ watch(
       return
     }
 
+    console.log('participants: QuizParticipantsStep', participants)
     // Sort by index to maintain order
     const sortedParticipants = [...participants].sort((a, b) => a.index - b.index)
 
@@ -568,7 +576,7 @@ watch(
 
       return baseItem
     })
-
+    console.log('mappedParticipants: QuizParticipantsStep', mappedParticipants)
     leftItems.value = mappedParticipants
   },
   { immediate: true, deep: true },
@@ -592,29 +600,20 @@ const loadingMessage = computed(() => {
   }
 })
 
-const onRightScroll = async (e: Event) => {
-  const target = e.target as HTMLElement
-
-  if (!target) {
-    return
-  }
-
-  // Increased threshold to 200px for earlier trigger
-  const scrollTop = target.scrollTop
-  const clientHeight = target.clientHeight
-  const scrollHeight = target.scrollHeight
-  const distanceFromBottom = scrollHeight - (scrollTop + clientHeight)
-  const nearBottom = distanceFromBottom <= 200
-
-  if (!nearBottom) {
-    return
-  }
+// Handle load more button click
+const handleLoadMore = async () => {
   if (participantTab.value === 'users') await loadUsers()
   if (participantTab.value === 'groups') await loadGroups()
   if (participantTab.value === 'stores') await loadStores()
   if (participantTab.value === 'cluster') await loadClusters()
   if (participantTab.value === 'role') await loadRoles()
 }
+
+// Check if load more button should be shown
+const showLoadMoreButton = computed(() => {
+  const currentTab = participantTab.value
+  return hasMore.value[currentTab] && !isLoading.value && rightList.value.length > 0
+})
 
 // Expose getter so parent can collect selected participants from the left list
 defineExpose<QuizParticipantsExpose>({
@@ -767,7 +766,6 @@ defineExpose<QuizParticipantsExpose>({
           ref="scrollContainer"
           class="overflow-y-auto px-2 md:px-3 lg:px-2"
           style="height: calc(100vh - 330px); scrollbar-width: thin"
-          @scroll="onRightScroll"
         >
           <!-- Empty state when no data -->
           <div
@@ -874,6 +872,19 @@ defineExpose<QuizParticipantsExpose>({
             </VueDraggable>
             <div v-if="isLoading" class="py-3 md:py-2.5 lg:py-3 text-center">
               <BaseText :text="loadingMessage" :tone="500" color="neutral" type="p-xs" />
+            </div>
+
+            <!-- Load More Button -->
+            <div v-if="showLoadMoreButton" class="py-4 flex justify-center">
+              <BaseButton
+                :text="t('pages.course.associations.loadMore')"
+                variant="outline"
+                color="primary"
+                size="sm"
+                :disabled="isLoading"
+                @onClick="handleLoadMore"
+                class="!font-medium"
+              />
             </div>
           </div>
         </div>

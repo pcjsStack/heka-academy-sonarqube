@@ -195,16 +195,28 @@ const handleEditCategory = async () => {
   if (!props.isAdmin) return
 
   const categoryId = Number(route.params.id)
-  if (categoryId) {
-    // Fetch category details if not already loaded
-    if (
-      !categoryStore.selectedCategoryDetail ||
-      categoryStore.selectedCategoryDetail.id !== categoryId
-    ) {
-      await categoryStore.fetchCategoryDetail(categoryId)
-    }
+  if (!categoryId) return
+
+  // Fetch category details if not already loaded
+  if (
+    !categoryStore.selectedCategoryDetail ||
+    categoryStore.selectedCategoryDetail.id !== categoryId
+  ) {
+    await categoryStore.fetchCategoryDetail(categoryId)
+  }
+
+  const visibility = categoryStore.selectedCategoryDetail?.visibility as VisibilityStatus
+
+  // If visibility is HIDE or MAINTENANCE, allow direct editing
+  if (visibility === VisibilityStatus.MAINTENANCE || visibility === VisibilityStatus.HIDE) {
     editingCategoryId.value = categoryId
     showCategoryCreationModal.value = true
+  } else if (visibility === VisibilityStatus.SHOW) {
+    // If visibility is SHOW, open visibility change modal
+    itemActions.selectedItemId.value = categoryId
+    itemActions.selectedCategoryVisibility.value = visibility
+    itemActions.selectedItemType.value = CourseActionType.CATEGORY
+    itemActions.showVisibilityChangeModal.value = true
   }
 }
 
@@ -214,6 +226,22 @@ const handleCloseCategoryCreationModal = async () => {
   // Refresh category details after edit
   if (route.params.id) {
     await categoryStore.fetchCategoryDetail(Number(route.params.id))
+  }
+}
+
+// Handle visibility change edit for categories
+const handleVisibilityChangeEdit = async () => {
+  // If editing a category, open the category edit modal
+  if (
+    itemActions.selectedItemType.value === CourseActionType.CATEGORY &&
+    itemActions.selectedItemId.value
+  ) {
+    itemActions.showVisibilityChangeModal.value = false
+    editingCategoryId.value = itemActions.selectedItemId.value
+    showCategoryCreationModal.value = true
+  } else {
+    // For other types, use the default handler
+    await itemActions.handleVisibilityChangeEdit()
   }
 }
 </script>
@@ -346,7 +374,7 @@ const handleCloseCategoryCreationModal = async () => {
       @onClose="itemActions.handleCloseVisibilityChangeModal"
       @onSave="itemActions.handleVisibilityChangeSave"
       :type="itemActions.renderVisibilityType()"
-      @onEdit="itemActions.handleVisibilityChangeEdit"
+      @onEdit="handleVisibilityChangeEdit"
     />
     <QuizCreationModal
       v-if="itemActions.showQuizCreationModal.value"

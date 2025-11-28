@@ -3,6 +3,20 @@
     class="bg-white rounded-[20px] border border-gray-200 p-5 relative flex flex-col items-center justify-center min-h-[160px]"
     @click="$emit('click')"
   >
+    <!-- Deleted Badge -->
+    <div
+      v-if="isDeleted"
+      class="absolute top-3 left-3 rounded-full px-2.5 py-1 bg-error-100 flex items-center z-10"
+    >
+      <BaseText
+        :text="t('pages.badgeSkills.filter.deleted.label')"
+        type="p-sm"
+        color="error"
+        font="semibold"
+        class="!text-error-600"
+      />
+    </div>
+
     <!-- Three Dot Menu -->
     <div v-if="idAdmin" class="absolute cursor-pointer top-3 right-3 z-10" @click.stop>
       <ThreeDotMenu :items="menuItems" />
@@ -42,6 +56,7 @@ import { BaseIcon, BaseText } from '@/components/common'
 import ThreeDotMenu from '@/components/ThreeDotMenu.vue'
 import type { MenuItem } from '@/components/ThreeDotMenu.vue'
 import type { Icons } from '@/types/Styles'
+import { t } from '@/utils/i18n'
 
 interface Props {
   id: number
@@ -49,10 +64,12 @@ interface Props {
   imageUrl?: string
   type: 'badge' | 'skill'
   idAdmin: boolean
+  isDeleted?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   idAdmin: false,
+  isDeleted: false,
 })
 
 const emit = defineEmits<{
@@ -61,19 +78,27 @@ const emit = defineEmits<{
   delete: [id: number]
 }>()
 
-const menuItems = computed((): MenuItem[] => [
-  {
-    label: 'Edit',
-    icon: 'edit' as Icons,
-    action: () => emit('edit', props.id),
-  },
-  {
-    label: 'Delete',
-    icon: 'delete' as Icons,
-    danger: true,
-    action: () => emit('delete', props.id),
-  },
-])
+const menuItems = computed((): MenuItem[] => {
+  const items: MenuItem[] = [
+    {
+      label: 'Edit',
+      icon: 'edit' as Icons,
+      action: () => emit('edit', props.id),
+    },
+  ]
+
+  // Only show delete action if item is not deleted
+  if (!props.isDeleted) {
+    items.push({
+      label: 'Delete',
+      icon: 'delete' as Icons,
+      danger: true,
+      action: () => emit('delete', props.id),
+    })
+  }
+
+  return items
+})
 
 // Different fallback icons for badges vs skills
 const fallbackIcon = computed(() => {

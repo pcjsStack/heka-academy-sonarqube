@@ -160,9 +160,7 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
       const assignations = getAssignations
         ? getAssignations()
         : categoryStore.selectedCategoryDetail?.assignations
-      const existingAssignation = assignations?.find(
-        (a) => a.relatedId === selectedItemId.value,
-      )
+      const existingAssignation = assignations?.find((a) => a.relatedId === selectedItemId.value)
       if (existingAssignation) {
         const file = existingAssignation.model as Media
         if (file) {
@@ -187,7 +185,7 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
   }
 
   // Confirm delete
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (refresh = true) => {
     if (!selectedItemId.value || !selectedItemType.value) return
 
     const actionType = selectedItemType.value as CourseActionType
@@ -224,7 +222,7 @@ export const useItemActions = (config: ItemActionsConfig = {}) => {
       selectedAssignation.value = null
 
       // Refresh data
-      if (onRefresh) {
+      if (onRefresh && refresh) {
         await onRefresh()
       } else if (categoryId) {
         await categoryStore.fetchCategoryDetail(categoryId)

@@ -48,7 +48,7 @@ const filters = ref<GetCoursesParams>({
   executionStatus: null,
   search: '',
 })
-const perPage = 8
+const perPage = 12
 
 const handleBack = () => {
   if (props.isAdmin) {
@@ -176,6 +176,7 @@ const handleCancelCourseModal = () => {
 const handleDeleteConfirmCourseModal = async () => {
   if (selectedCourseId.value) {
     await courseStore.deleteCourse([selectedCourseId.value], 'soft')
+    currentPage.value = 0
     showDeleteCourseModal.value = false
     selectedCourseId.value = null
   }

@@ -31,6 +31,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: SkillsFormData]
   'validation-change': [validation: SkillsFormValidation]
   'scroll-bottom': [type: 'file' | 'course' | 'lessons' | 'quiz']
+  search: [type: 'file' | 'course' | 'lessons' | 'quiz', query: string]
 }>()
 
 const skillsData = computed({
@@ -135,6 +136,10 @@ const getAssociationOptions = (type: 'file' | 'course' | 'lessons' | 'quiz') => 
 
 const handleScrollBottom = (type: 'file' | 'course' | 'lessons' | 'quiz') => {
   emit('scroll-bottom', type)
+}
+
+const handleSearch = (type: 'file' | 'course' | 'lessons' | 'quiz', query: string) => {
+  emit('search', type, query)
 }
 </script>
 
@@ -253,10 +258,12 @@ const handleScrollBottom = (type: 'file' | 'course' | 'lessons' | 'quiz') => {
             :options="getAssociationOptions(associationType)"
             :placeholder="t('pages.badgeSkills.associations.select')"
             multiple
+            searchable
             size="md"
             class="!w-[380px] flex-shrink-0"
             @update:model-value="(values) => handleAssociationChange(associationType, values)"
             @scroll-bottom="() => handleScrollBottom(associationType)"
+            @on-search="(query) => handleSearch(associationType, query)"
           />
         </div>
       </div>

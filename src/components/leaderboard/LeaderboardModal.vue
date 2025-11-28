@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>()
 
 // State
-const selectedType = ref<'lessons' | 'courses'>('courses')
+const selectedType = ref<'lessons' | 'courses'>('lessons')
 const activeTab = ref<number | 'all' | null>('all')
 const isLoading = ref(false)
 
@@ -39,7 +39,7 @@ const tabs = computed<Tab[]>(() => {
   }
   const courseTabs = courseLeaderboards.value.map((item) => ({
     id: item.id,
-    label: item.shortName || item.name,
+    label: item.name || item.shortName,
     name: item.name,
     isAll: false,
   }))
@@ -159,7 +159,6 @@ const getAvatarColor = (userId: number): string => {
   ]
   return colors[userId % colors.length] as string
 }
-
 </script>
 <template>
   <BaseSideModal
@@ -242,7 +241,10 @@ const getAvatarColor = (userId: number): string => {
                 />
                 <div
                   v-else
-                  :class="[getAvatarColor(users[1]!.user.id), 'w-full h-full flex items-center justify-center text-white font-semibold text-lg']"
+                  :class="[
+                    getAvatarColor(users[1]!.user.id),
+                    'w-full h-full flex items-center justify-center text-white font-semibold text-lg',
+                  ]"
                 >
                   {{ getUserInitials(users[1]!.user) }}
                 </div>
@@ -264,7 +266,7 @@ const getAvatarColor = (userId: number): string => {
             >
               <BaseIcon name="stars" size="2xs" />
               <BaseText
-                :text="users[1]!.percentage.toString() || '0'"
+                :text="users[1]!.percentage.toFixed().toString() || '0'"
                 font="medium"
                 class="text-warning-500 !leading-[15px] !text-[12px]"
               />
@@ -290,7 +292,10 @@ const getAvatarColor = (userId: number): string => {
                 />
                 <div
                   v-else
-                  :class="[getAvatarColor(users[0]!.user.id), 'w-full h-full flex items-center justify-center text-white font-semibold text-xl']"
+                  :class="[
+                    getAvatarColor(users[0]!.user.id),
+                    'w-full h-full flex items-center justify-center text-red-500 font-semibold text-xl',
+                  ]"
                 >
                   {{ getUserInitials(users[0]!.user) }}
                 </div>
@@ -312,7 +317,7 @@ const getAvatarColor = (userId: number): string => {
             >
               <BaseIcon name="stars" size="2xs" />
               <BaseText
-                :text="users[0]!.percentage.toString() || '0'"
+                :text="users[0]!.percentage.toFixed().toString() || '0'"
                 font="medium"
                 class="text-warning-500 !leading-[15px] !text-[12px]"
               />
@@ -333,7 +338,10 @@ const getAvatarColor = (userId: number): string => {
                 />
                 <div
                   v-else
-                  :class="[getAvatarColor(users[2]!.user.id), 'w-full h-full flex items-center justify-center text-white font-semibold text-lg']"
+                  :class="[
+                    getAvatarColor(users[2]!.user.id),
+                    'w-full h-full flex items-center justify-center text-white font-semibold text-lg',
+                  ]"
                 >
                   {{ getUserInitials(users[2]!.user) }}
                 </div>
@@ -355,7 +363,7 @@ const getAvatarColor = (userId: number): string => {
             >
               <BaseIcon name="stars" size="2xs" />
               <BaseText
-                :text="users[2]!.percentage.toString() || '0'"
+                :text="users[2]!.percentage.toFixed().toString() || '0'"
                 font="medium"
                 class="text-warning-500 !leading-[15px] !text-[12px]"
               />
@@ -392,7 +400,10 @@ const getAvatarColor = (userId: number): string => {
               />
               <div
                 v-else
-                :class="[getAvatarColor(user.user.id), 'w-full h-full flex items-center justify-center text-white font-semibold text-sm']"
+                :class="[
+                  getAvatarColor(user.user.id),
+                  'w-full h-full flex items-center justify-center text-white font-semibold text-sm',
+                ]"
               >
                 {{ getUserInitials(user.user) }}
               </div>
@@ -414,7 +425,7 @@ const getAvatarColor = (userId: number): string => {
           <div class="flex items-center gap-1 text-warning-500">
             <BaseIcon name="stars" size="2xs" />
             <BaseText
-              :text="user.percentage.toString()"
+              :text="user.percentage.toFixed().toString()"
               font="medium"
               class="text-warning-500 !leading-[15px] !text-[12px]"
             />
@@ -453,7 +464,10 @@ const getAvatarColor = (userId: number): string => {
               />
               <div
                 v-else
-                :class="[getAvatarColor(user.user.id), 'w-full h-full flex items-center justify-center text-white font-semibold text-xs']"
+                :class="[
+                  getAvatarColor(user.user.id),
+                  'w-full h-full flex items-center justify-center text-white font-semibold text-xs',
+                ]"
               >
                 {{ getUserInitials(user.user) }}
               </div>
@@ -475,7 +489,7 @@ const getAvatarColor = (userId: number): string => {
           <div class="flex items-center gap-1 text-warning-500">
             <BaseIcon name="stars" size="2xs" />
             <BaseText
-              :text="user.percentage.toString()"
+              :text="user.percentage.toFixed().toString()"
               font="medium"
               class="text-warning-500 !leading-[15px] !text-[12px]"
             />

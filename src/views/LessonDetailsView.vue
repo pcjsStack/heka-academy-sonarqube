@@ -119,23 +119,6 @@
           </div>
         </div>
       </div>
-
-      <LessonCompletedModal
-        v-if="showLessonCompletedModal"
-        :user-name="userName"
-        :user-profile-image="userProfileImage"
-        :position="userPosition"
-        :points="userPoints"
-        @close="handleCloseLessonCompletedModal"
-        @return-home="handleReturnHome"
-        @see-leaderboard="handleSeeLeaderboard"
-      />
-
-      <CourseLeaderboardModal
-        v-if="showLeaderboardModal"
-        @close="handleCloseLeaderboard"
-        @return-home="handleLeaderboardReturnHome"
-      />
     </div>
 
     <LessonCompletedModal
@@ -151,6 +134,8 @@
 
     <CourseLeaderboardModal
       v-if="showLeaderboardModal"
+      :lesson-id="route.params.id as unknown as number"
+      owner-type="lessons"
       @close="handleCloseLeaderboard"
       @return-home="handleLeaderboardReturnHome"
     />
@@ -160,47 +145,6 @@
       :file="currentFile"
       @close="handleCloseFileViewer"
     />
-    <BasePopupModal
-      v-if="showPopupModal"
-      :title="t('pages.lesson.completed.title')"
-      size="md"
-      :close-button="true"
-      :is-header="true"
-      @on-close="handleClosePopupModal"
-    >
-      <div class="flex flex-col items-center px-6 py-8">
-        <div class="mb-6">
-          <div class="relative">
-            <div class="flex items-center justify-center">
-              <img
-                :src="success"
-                alt="Success"
-                class="mx-auto w-[96px] h-[96px] sm:mb-[40px] mb-[22px]"
-              />
-            </div>
-          </div>
-        </div>
-
-        <BaseText
-          :text="t('pages.lesson.completed.message')"
-          color="neutral"
-          :tone="600"
-          font="regular"
-          type="p-md"
-          class="text-center mb-8 leading-relaxed"
-        />
-
-        <!-- Done Button -->
-        <BaseButton
-          :text="t('pages.course.publishSuccess.done')"
-          color="primary"
-          variant="default"
-          size="md"
-          @click="handleClosePopupModal"
-          class="px-8"
-        />
-      </div>
-    </BasePopupModal>
   </div>
 </template>
 
@@ -211,10 +155,8 @@ import Popper from 'vue3-popper'
 import {
   BaseText,
   BaseCourseItemCard,
-  BaseButton,
   BaseTimer,
   BaseCircularProgress,
-  BasePopupModal,
   PermissionDenied,
 } from '@/components/common'
 import FileViewerModal from '@/components/modal/FileViewerModal.vue'
@@ -223,7 +165,6 @@ import LessonCompletedModal from '@/components/modal/LessonCompletedModal.vue'
 import { CourseLeaderboardModal } from '@/components/leaderboard'
 import { useLessonsStore } from '@/stores/lessonsStore'
 import TimerService from '@/services/timerService'
-import success from '@/assets/gif/success.gif'
 import { t } from '@/utils/i18n'
 import {
   CourseContentType,
@@ -232,6 +173,7 @@ import {
   VisibilityStatus,
 } from '@/types/Course'
 import type { CourseExecution } from '@/types/Course'
+import { ExecutionStatus } from '@/types/GlobalTypes'
 import jennyImg from '@/assets/users/Jenny.png'
 import type { Assignation } from '@/types/Lessons'
 import type { Media } from '@/types/Media'
@@ -251,6 +193,15 @@ interface LessonAssignations {
 const router = useRouter()
 const route = useRoute()
 const lessonsStore = useLessonsStore()
+
+// Props
+interface Props {
+  isAdmin?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isAdmin: false,
+})
 
 // State
 const overallProgress = computed(() => {
@@ -273,7 +224,6 @@ const currentFile = ref<Media | null>(null)
 const timerRef = ref<InstanceType<typeof BaseTimer> | null>(null)
 const isTimerStopped = ref(true)
 const timerDetails = ref<TimerItem | null>(null)
-const showPopupModal = ref(false)
 const isInitializingTimer = ref(false)
 const isInitialLoad = ref(true)
 
@@ -291,9 +241,21 @@ const userPoints = ref(240)
 onMounted(async () => {
   await loadLesson(route.params.id as unknown as number)
 
+  // Mark initial load as complete after lesson is loaded
   await nextTick()
   isInitialLoad.value = false
 
+  // Check if lesson is already completed (for non-admin users)
+  // This handles cases where user navigates to an already-completed lesson
+  if (
+    !props.isAdmin &&
+    lessonsStore.getLessonDetails?.execution?.status === ExecutionStatus.COMPLETED
+  ) {
+    // Don't show modal on initial load, only show when status changes
+    // The watch will handle status changes
+  }
+
+  // Add beforeunload event listener to warn about unsaved changes
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -402,18 +364,29 @@ watch(
 // Lesson items data
 const lessonItems = computed(() => {
   return (
-    lessonsStore.getLessonDetails?.assignations.map((assignation) => ({
-      id: assignation.id,
-      title:
-        assignation.relatedType === CourseActionType.FILE_ASSET
-          ? assignation.model.fileName
-          : assignation.model.name,
-      contentType: getContentType(assignation),
-      status: (assignation.model.status === 'published' ? 'done' : 'todo') as 'done' | 'todo',
-      actionType: assignation.relatedType as CourseActionType | undefined,
-      percentage: assignation.execution?.percentage || 0,
-      visibility: assignation.model.visibility as VisibilityStatus,
-    })) || []
+    lessonsStore.getLessonDetails?.assignations.map((assignation) => {
+      let title = ''
+      if (assignation.relatedType === CourseActionType.FILE_ASSET) {
+        title =
+          (assignation.model as Media).customFileName ||
+          (assignation.model as Media).fileName ||
+          'Untitled File'
+      } else if (assignation.relatedType === CourseActionType.QUIZ) {
+        // Quiz uses 'title' field instead of 'name'
+        title = (assignation.model as { title?: string }).title || ''
+      } else {
+        title = (assignation.model as { name?: string }).name || 'Untitled'
+      }
+      return {
+        id: assignation.id,
+        title: title,
+        contentType: getContentType(assignation),
+        status: (assignation.model.status === 'published' ? 'done' : 'todo') as 'done' | 'todo',
+        actionType: assignation.relatedType as CourseActionType | undefined,
+        percentage: assignation.execution?.percentage || 0,
+        visibility: assignation.model.visibility as VisibilityStatus,
+      }
+    }) || []
   )
 })
 
@@ -573,17 +546,27 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
-const handleClosePopupModal = () => {
-  showPopupModal.value = false
-}
+// Watch for lesson completion
+watch(
+  () => lessonsStore.getLessonDetails?.execution?.status,
+  async (newStatus) => {
+    if (!props.isAdmin && newStatus === ExecutionStatus.COMPLETED) {
+      if (!isTimerStopped.value && timerDetails.value?.running) {
+        await handleTimerStop(false) // programmatic call
+      }
+      showLessonCompletedModal.value = true
+    }
+  },
+)
 
 watch(overallProgress, async (newVal) => {
   if (newVal === 100) {
     if (!isTimerStopped.value && timerDetails.value?.running) {
       await handleTimerStop(false)
     }
-    if (!isInitialLoad.value) {
-      showPopupModal.value = true
+    // Only show popup if this is not the initial load and user is admin
+    if (!isInitialLoad.value && props.isAdmin) {
+      showLessonCompletedModal.value = true
     }
   }
 })

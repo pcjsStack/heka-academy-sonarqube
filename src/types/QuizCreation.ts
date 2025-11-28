@@ -51,6 +51,7 @@ export interface QuestionType {
 export interface QuizSettingsData {
   title: string
   language: string
+  visibility: string
   maxAttempts?: string
   showFeedback?: boolean
   description?: string

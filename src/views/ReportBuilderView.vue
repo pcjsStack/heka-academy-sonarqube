@@ -213,6 +213,13 @@
         </div>
       </template>
     </BaseSideModal>
+
+    <!-- Generate Report Modal -->
+    <GenerateReportModal
+      :show="showGenerateReportModal"
+      @close="handleCloseGenerateReportModal"
+      @generate="handleGenerateReportSubmit"
+    />
   </div>
 </template>
 
@@ -231,12 +238,17 @@ import {
   BaseSideModal,
 } from '@/components/common'
 import ReportFilters from '@/components/reportBuilder/ReportFilters.vue'
+import GenerateReportModal from '@/components/reportBuilder/GenerateReportModal.vue'
 import { t } from '@/utils/i18n'
+import type { GenerateReportFormData } from '@/types/ReportBuilder'
 
 const router = useRouter()
 
 // Mobile sidebar toggle
 const isSidebarOpen = ref(false)
+
+// Generate Report Modal
+const showGenerateReportModal = ref(false)
 
 // Filter states
 const reportType = ref('')
@@ -368,7 +380,17 @@ const handleApplyFiltersAndClose = () => {
 }
 
 const handleGenerateReport = () => {
-  // Generate report functionality to be implemented
+  showGenerateReportModal.value = true
+}
+
+const handleCloseGenerateReportModal = () => {
+  showGenerateReportModal.value = false
+}
+
+const handleGenerateReportSubmit = (formData: GenerateReportFormData) => {
+  // Handle generate report with form data
+  console.log('Generate report with data:', formData)
+  // TODO: Implement actual API call to generate report
 }
 
 const handleExport = () => {

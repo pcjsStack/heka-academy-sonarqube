@@ -224,6 +224,7 @@ export const buildQuizPayload = (
   const payload: QuizCreatePayload = {
     title: settings.title,
     language: settings.language,
+    visibility: settings.visibility,
     maxAttempts: Number(settings.maxAttempts) || 0,
     description: settings.description || '',
     showFeedback: settings.showFeedback || false,

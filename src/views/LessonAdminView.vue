@@ -80,12 +80,9 @@ watch(
   },
 )
 
-const isDisabled = computed(() => {
-  return (
-    lessonsStore.getLessonDetails?.visibility !== VisibilityStatus.MAINTENANCE &&
-    lessonsStore.getLessonDetails?.visibility !== VisibilityStatus.HIDE
-  )
-})
+const isDisabled = computed(
+  () => lessonsStore.getLessonDetails?.visibility !== VisibilityStatus.MAINTENANCE,
+)
 
 const actionButtons = computed<ActionButtonConfig[]>(() => [
   {
@@ -120,8 +117,7 @@ const lessonItems = computed((): (CategoryItem & { assignation: Assignation })[]
         let title = ''
         if (assignation.relatedType === CourseActionType.FILE_ASSET) {
           title =
-            (assignation.model as { customFileName?: string; fileName?: string })
-              .customFileName ||
+            (assignation.model as { customFileName?: string; fileName?: string }).customFileName ||
             (assignation.model as { customFileName?: string; fileName?: string }).fileName ||
             'Untitled File'
         } else if (assignation.relatedType === CourseActionType.QUIZ) {

@@ -56,6 +56,7 @@ const hasItems = computed(() => props.items.length > 0)
           :idAdmin="idAdmin"
           :image-url="item.imageUrl"
           :type="type"
+          :isDeleted="item.isDeleted"
           @click="emit('item-click', item.id)"
           @edit="emit('item-edit', item.id)"
           @delete="emit('item-delete', item.id)"
